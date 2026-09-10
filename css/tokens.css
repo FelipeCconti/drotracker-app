@@ -1,0 +1,102 @@
+/* ============================================================
+   DRO.TRACKER · tokens
+   TODO el color, la tipografía y el espaciado de la app viven acá.
+   Ningún componente escribe un color, una fuente ni una medida
+   literal: todos usan var(--...). Cambiar la identidad visual entera
+   es editar este archivo, no cazar hexadecimales por seis módulos.
+
+   Paleta: gama azul única  #aebfc9 (claro) → #1d3a4a (oscuro).
+   Verde y rojo se reservan para SIGNIFICADO (progreso vs.
+   estancamiento), nunca para estética.
+   ============================================================ */
+
+:root {
+
+  /* ---- Gama azul: la rampa cruda, del claro al oscuro ---- */
+  --azul-050: #e6edf1;
+  --azul-100: #cdd9e0;
+  --azul-200: #aebfc9;   /* extremo claro de la paleta */
+  --azul-300: #96a9b4;
+  --azul-400: #7e939f;
+  --azul-500: #667d8a;
+  --azul-600: #4d6775;
+  --azul-700: #355160;
+  --azul-800: #274451;
+  --azul-900: #1d3a4a;   /* extremo oscuro de la paleta */
+  --azul-950: #142a36;
+
+  /* ---- Superficies (app de tema oscuro, construida sobre el azul) ---- */
+  --color-fondo:            var(--azul-950);
+  --color-superficie:       var(--azul-900);
+  --color-superficie-alta:  var(--azul-800);
+  --color-borde:            var(--azul-700);
+  --color-borde-tenue:      var(--azul-800);
+
+  /* ---- Texto ---- */
+  --color-texto:        var(--azul-050);
+  --color-texto-tenue:  var(--azul-200);
+  --color-texto-debil:  var(--azul-400);
+  --color-texto-sobre-acento: var(--azul-950);
+
+  /* ---- Acento (interacción: botones, focos, enlaces) ---- */
+  --color-acento:        var(--azul-300);
+  --color-acento-fuerte: var(--azul-200);
+  --color-acento-suave:  var(--azul-600);
+  --color-foco:          var(--azul-200);
+
+  /* ---- Colores con SIGNIFICADO (no decorativos) ---- */
+  --color-progreso:        #6f9e6a;   /* avance, PR, mejora */
+  --color-progreso-tenue:  #33513a;
+  --color-estancamiento:       #c1585a;   /* sin avance, retroceso, error */
+  --color-estancamiento-tenue: #4a2b2d;
+
+  /* ---- Tipografía ---- */
+  --fuente-titulo: 'Oswald', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --fuente-texto:  'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fuente-mono:   'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+
+  --texto-xs:  0.75rem;
+  --texto-sm:  0.875rem;
+  --texto-md:  1rem;
+  --texto-lg:  1.25rem;
+  --texto-xl:  1.75rem;
+  --texto-2xl: 2.5rem;
+
+  --peso-normal:  400;
+  --peso-medio:   500;
+  --peso-semi:    600;
+  --peso-fuerte:  700;
+
+  --interlinea-apretada: 1.2;
+  --interlinea-normal:   1.5;
+
+  /* ---- Espaciado (escala de 4px) ---- */
+  --esp-1:  0.25rem;
+  --esp-2:  0.5rem;
+  --esp-3:  0.75rem;
+  --esp-4:  1rem;
+  --esp-5:  1.5rem;
+  --esp-6:  2rem;
+  --esp-7:  3rem;
+  --esp-8:  4rem;
+
+  /* ---- Formas ---- */
+  --radio-sm:   6px;
+  --radio-md:   10px;
+  --radio-lg:   16px;
+  --radio-full: 999px;
+
+  --borde-fino: 1px solid var(--color-borde);
+
+  /* ---- Sombras y elevación ---- */
+  --sombra-sm: 0 1px 2px rgba(10, 20, 26, 0.35);
+  --sombra-md: 0 6px 20px rgba(10, 20, 26, 0.45);
+
+  /* ---- Movimiento ---- */
+  --trans-rapida: 120ms ease;
+  --trans-normal: 200ms ease;
+
+  /* ---- Layout ---- */
+  --ancho-contenido: 1100px;
+  --ancho-tarjeta:   420px;
+}

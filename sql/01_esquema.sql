@@ -47,7 +47,7 @@ create table if not exists profiles (
 create table if not exists invitaciones (
   email       text primary key,
   nota        text,
-  invitado_por uuid references profiles(id),
+  invitado_por uuid references profiles(id) on delete set null,
   creado      timestamptz not null default now()
 );
 
@@ -60,7 +60,9 @@ create table if not exists coach_links (
   puede_editar_plan boolean not null default true,
   -- La composición corporal NO se otorga desde acá: vive en
   -- composition_access, que solo el atleta controla.
-  creado_por        uuid references profiles(id),
+  -- set null: si se borra la cuenta de quien creó el vínculo, el
+  -- vínculo sobrevive; solo se pierde el dato de quién lo creó.
+  creado_por        uuid references profiles(id) on delete set null,
   creado            timestamptz not null default now(),
   primary key (coach_id, atleta_id),
   constraint coach_no_es_su_propio_coach check (coach_id <> atleta_id)

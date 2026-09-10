@@ -94,10 +94,12 @@ $$;
 -- ============================================================
 alter table profiles enable row level security;
 
--- Nadie puede cambiar su propio rol ni auto-aprobarse: el permiso de
--- UPDATE se otorga columna por columna y `rol` y `estado` quedan fuera
--- del alcance del atleta. Es más robusto que un check, porque la
--- restricción vive en el motor y no en la política.
+-- El permiso de UPDATE se otorga columna por columna, de modo que un
+-- atleta no puede tocar columnas que no le corresponden. Ojo: esto NO
+-- basta para proteger `rol` y `estado`, porque más abajo hay que
+-- otorgarlos para que el admin pueda escribirlos y un grant aplica al
+-- rol `authenticated` entero. Quien realmente los protege es el
+-- trigger tr_rol_y_estado, unas líneas más abajo.
 revoke update on profiles from authenticated;
 grant  select on profiles to authenticated;
 grant  update (nombre, altura_cm, unidad_def) on profiles to authenticated;
@@ -116,25 +118,46 @@ drop policy if exists "el admin gestiona roles y accesos" on profiles;
 create policy "el admin gestiona roles y accesos" on profiles for update
   using (es_admin()) with check (es_admin());
 
-grant update (rol, estado) on profiles to authenticated;  -- filtrado por la política de arriba
+grant update (rol, estado) on profiles to authenticated;  -- lo acota el trigger de abajo
 
--- Salvaguarda: que nunca quede el sistema sin administrador.
-create or replace function public.proteger_ultimo_admin()
+-- ------------------------------------------------------------
+-- Guardián de `rol` y `estado`.
+--
+-- El grant de columnas de arriba es necesario para que el admin pueda
+-- escribir esas dos columnas, pero un grant se otorga al rol
+-- `authenticated` completo: por sí solo dejaría que cualquiera
+-- cambiara SU PROPIO rol, porque la política "editar mi perfil" le
+-- permite tocar su fila. Este trigger es el que cierra esa puerta.
+--
+-- auth.uid() es null cuando la sentencia viene del SQL Editor o de una
+-- llave de servicio, no del navegador: eso es lo que permite nombrar
+-- al primer administrador antes de que exista ninguno.
+-- ------------------------------------------------------------
+create or replace function public.proteger_rol_y_estado()
 returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
+  if auth.uid() is not null
+     and (new.rol is distinct from old.rol or new.estado is distinct from old.estado)
+     and not public.es_admin() then
+    raise exception 'Solo un administrador puede cambiar el rol o el estado de una cuenta.';
+  end if;
+
+  -- Y que nunca quede el sistema sin administrador.
   if old.rol = 'admin' and new.rol <> 'admin'
      and (select count(*) from public.profiles where rol = 'admin') <= 1 then
     raise exception 'No se puede quitar el rol al único administrador.';
   end if;
+
   return new;
 end $$;
 
 drop trigger if exists tr_ultimo_admin on profiles;
-create trigger tr_ultimo_admin
-  before update of rol on profiles
-  for each row execute function public.proteger_ultimo_admin();
+drop trigger if exists tr_rol_y_estado on profiles;
+create trigger tr_rol_y_estado
+  before update on profiles
+  for each row execute function public.proteger_rol_y_estado();
 
 -- ============================================================
 -- INVITACIONES · la lista blanca. Solo el admin.
