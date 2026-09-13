@@ -1346,3 +1346,93 @@
   .sujeto .entrada--sujeto { flex: 1 1 auto; max-width: none; }
   .app-nav    { order: 4; flex-basis: 100%; margin-left: 0; }
 }
+
+/* ---- Primeros pasos ---- */
+
+/* La primera sección va destacada, igual que la de privacidad: son las
+   dos que alguien lee de verdad. El resto se consulta cuando surge la
+   duda. */
+.guia-seccion--primera {
+  padding: var(--esp-5);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-left: 3px solid var(--color-acento);
+  border-radius: var(--radio-md);
+}
+
+.pasos {
+  list-style: none;
+  margin: var(--esp-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-4);
+}
+
+.paso {
+  display: flex;
+  gap: var(--esp-4);
+  align-items: flex-start;
+}
+
+.paso-n {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-fuerte);
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  border-radius: var(--radio-full);
+}
+
+.paso-texto { min-width: 0; }
+.paso-texto h3 {
+  margin: 2px 0 var(--esp-2);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.paso-texto p {
+  margin: 0 0 var(--esp-2);
+  line-height: var(--interlinea-normal);
+  color: var(--color-texto-tenue);
+}
+.paso-texto p:last-child { margin-bottom: 0; }
+
+/* El matiz que evita la pregunta siguiente, en voz más baja. */
+.paso-aparte {
+  font-size: var(--texto-sm);
+  color: var(--color-texto-debil);
+  border-left: 2px solid var(--color-borde);
+  padding-left: var(--esp-3);
+}
+
+.guia-pie {
+  display: flex;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+  margin-top: var(--esp-5);
+}
+.guia-pie .boton { margin-top: 0; }
+
+.boton--secundario {
+  color: var(--color-texto-tenue);
+  background: transparent;
+  border: var(--borde-fino);
+}
+.boton--secundario:hover {
+  color: var(--color-texto);
+  background: var(--color-superficie-alta);
+  border-color: var(--color-acento);
+}
+
+@media (max-width: 640px) {
+  .guia-seccion--primera { padding: var(--esp-4); }
+  .paso { gap: var(--esp-3); }
+  .guia-pie .boton { flex: 1 1 100%; text-align: center; }
+}

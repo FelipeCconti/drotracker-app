@@ -22,6 +22,76 @@ export function montarInstrucciones(contenedor, perfil, ir) {
     <article class="guia">
       <h1 class="guia-titulo">Cómo se usa DRO.TRACKER</h1>
 
+      <section class="guia-seccion guia-seccion--primera">
+        <h2>Si es tu primera vez: cuatro pasos</h2>
+        <p>
+          Lo único imprescindible son los dos primeros. Con eso ya puedes entrenar hoy;
+          el resto se llena solo con el uso.
+        </p>
+
+        <ol class="pasos">
+          <li class="paso">
+            <span class="paso-n">1</span>
+            <div class="paso-texto">
+              <h3>Arma tu rutina</h3>
+              <p>
+                Ve a <strong>Rutina</strong>, ponle un nombre y di cuántos días entrenas
+                por semana. Después, para cada día, agrega sus ejercicios desde el catálogo
+                —o créalos si no están— y pon cuántas series haces.
+              </p>
+              <p class="paso-aparte">
+                No tiene que quedar perfecta. Se cambia cuando quieras y no rompe nada.
+              </p>
+            </div>
+          </li>
+
+          <li class="paso">
+            <span class="paso-n">2</span>
+            <div class="paso-texto">
+              <h3>Anota tu primer entrenamiento</h3>
+              <p>
+                En <strong>Entrenar</strong>, elige el día que te toca y escribe el peso,
+                las series y las repeticiones de cada ejercicio. Se guarda solo mientras
+                escribes: no hay botón de guardar.
+              </p>
+              <p class="paso-aparte">
+                La primera vez hay que escribirlo todo. De la segunda en adelante, cada
+                ejercicio llega con lo que hiciste la vez anterior y solo corriges lo que
+                cambió.
+              </p>
+            </div>
+          </li>
+
+          <li class="paso">
+            <span class="paso-n">3</span>
+            <div class="paso-texto">
+              <h3>Si quieres, registra tu composición corporal</h3>
+              <p>
+                Opcional y aparte. En <strong>Composición</strong> pones tu altura una vez
+                y luego las mediciones que vayas tomando: peso, grasa, agua, lo que mida tu
+                balanza. Completas solo lo que tengas.
+              </p>
+              <p class="paso-aparte">
+                Esto no lo ve nadie más que tú hasta que tú lo autorices, y lo puedes
+                revocar después.
+              </p>
+            </div>
+          </li>
+
+          <li class="paso">
+            <span class="paso-n">4</span>
+            <div class="paso-texto">
+              <h3>Vuelve en unas semanas</h3>
+              <p>
+                <strong>Progreso</strong> empieza vacío y se llena solo con lo que vayas
+                anotando. Con tres o cuatro semanas ya se ve una tendencia; antes de eso,
+                son puntos sueltos.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
       <section class="guia-seccion">
         <h2>El día a día</h2>
         <p>
@@ -121,8 +191,12 @@ export function montarInstrucciones(contenedor, perfil, ir) {
         </p>
       </section>
 
-      <button class="boton" type="button" id="volver-inicio">Volver al inicio</button>
+      <div class="guia-pie">
+        <button class="boton" type="button" id="volver-inicio">Volver al inicio</button>
+        <button class="boton boton--secundario" type="button" id="ir-rutina">Empezar por mi rutina</button>
+      </div>
     </article>`;
 
   contenedor.querySelector('#volver-inicio').addEventListener('click', () => ir('inicio'));
+  contenedor.querySelector('#ir-rutina').addEventListener('click', () => ir('rutina'));
 }

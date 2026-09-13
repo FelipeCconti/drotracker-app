@@ -86,9 +86,14 @@ async function cargarAtleta() {
     // Ciclo y semana propuestos: los de la sesión más reciente. Dentro
     // de una misma semana se hacen varios días con el mismo par, así
     // que repetirlo acierta casi siempre; y está a un toque de cambiar.
+    //
+    // Si la última sesión no los traía, se quedan VACÍOS. No todo el
+    // mundo entrena por ciclos: a quien hace la misma carga todas las
+    // semanas, inventarle un "ciclo 1" le ensucia los datos y le pide
+    // rellenar un campo que no significa nada para él.
     const ult = await ultimaSesion(S.atleta.id);
-    S.ciclo  = ult?.cycles?.numero ?? (S.ciclos.at(-1)?.numero ?? 1);
-    S.semana = ult?.semana ?? 1;
+    S.ciclo  = ult ? (ult.cycles?.numero ?? null) : null;
+    S.semana = ult ? (ult.semana ?? null) : null;
 
     // Día propuesto: el siguiente al último registrado.
     const idxUlt = S.dias.findIndex((d) => d.id === ult?.routine_day_id);
@@ -127,7 +132,11 @@ async function cargarDia() {
     const registrados = sesion ? await registrosDeSesion(sesion.id) : new Map();
 
     S.filas = ejercicios.map((ej) => {
-      const ya = registrados.get(ej.exerciseId);
+      // Indexado por la fila del PLAN, no por el ejercicio: si alguien
+      // pone el mismo movimiento dos veces en el día (una serie pesada
+      // y otra de descarga), son dos filas distintas y no una que se
+      // pisa a sí misma.
+      const ya = registrados.get(ej.routineExerciseId) ?? registrados.get(ej.exerciseId);
       const ultimo = ultimos.get(ej.exerciseId);
       return {
         ...ej,
@@ -283,11 +292,11 @@ function pintar() {
         <input type="date" id="fecha" class="entrada entrada--fecha" value="${esc(S.fecha)}" max="${esc(hoyISO())}">
       </label>
       <label class="campo-chico">
-        <span class="campo-etiqueta">Ciclo</span>
+        <span class="campo-etiqueta">Ciclo (opcional)</span>
         <input type="number" id="ciclo" class="entrada entrada--num" min="1" step="1" inputmode="numeric" value="${S.ciclo ?? ''}">
       </label>
       <label class="campo-chico">
-        <span class="campo-etiqueta">Semana</span>
+        <span class="campo-etiqueta">Semana (opcional)</span>
         <input type="number" id="semana" class="entrada entrada--num" min="1" max="8" step="1" inputmode="numeric" value="${S.semana ?? ''}">
       </label>
       <p class="contexto-fecha">${esc(fmtFechaLarga(S.fecha))}</p>

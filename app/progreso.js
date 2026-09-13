@@ -394,6 +394,12 @@ function textoUnidadReps(filas) {
   return r ? `${unidad} · ${r} reps` : unidad;
 }
 
+/** "11-09" — para rotular a quien no trabaja por ciclos. */
+function fechaCorta(iso) {
+  const [, m, d] = String(iso).split('-');
+  return `${d}-${m}`;
+}
+
 function nombreCorto(nombre) {
   return String(nombre).replace(/^d[ií]a\s*\d+\s*[–-]\s*/i, '');
 }
@@ -401,8 +407,20 @@ function nombreCorto(nombre) {
 function dibujarMultiple(canvas, filas, tamEtiqueta = 10) {
   if (!canvas || !filas.length) return;
   const p = paleta();
-  const orden = [...filas].sort((a, b) => (a.ciclo - b.ciclo) || (a.semana - b.semana));
-  const etiquetas = orden.map((f) => `C${f.ciclo ?? '?'}·S${f.semana ?? '?'}`);
+
+  // Se ordena por FECHA, no por ciclo y semana. La fecha existe siempre;
+  // ciclo y semana son opcionales, y ordenar por un campo nulo deja las
+  // barras en cualquier orden sin avisar.
+  const orden = [...filas].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+
+  // Y se rotula según lo que esa persona use de verdad. Quien entrena
+  // en ciclos periodizados ve "C4·S2"; quien hace la misma carga todas
+  // las semanas ve la fecha, que para él es la única referencia que
+  // significa algo.
+  const periodiza = orden.some((f) => f.ciclo != null || f.semana != null);
+  const etiquetas = orden.map((f) => (periodiza
+    ? `C${f.ciclo ?? '–'}·S${f.semana ?? '–'}`
+    : fechaCorta(f.fecha)));
 
   S.graficos.push(new Chart(canvas, {
     type: 'bar',

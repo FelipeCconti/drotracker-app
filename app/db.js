@@ -158,13 +158,20 @@ export async function actualizarSesion(sessionId, campos) {
     .single());
 }
 
-/** Lo ya registrado en una sesión, indexado por ejercicio. */
+/**
+ * Lo ya registrado en una sesión, indexado por la fila del PLAN cuando
+ * la hay y por el ejercicio cuando no (registro fuera de la rutina).
+ *
+ * La distinción importa si alguien repite el mismo movimiento dos veces
+ * en un día: indexado por ejercicio, la segunda fila taparía a la
+ * primera y una de las dos cargas se perdería al volver a abrir.
+ */
 export async function registrosDeSesion(sessionId) {
   const filas = revisar(await supabase
     .from('set_logs')
     .select('id, exercise_id, routine_exercise_id, series, reps, peso, unidad, rpe, actualizado_en, registrado_por')
     .eq('session_id', sessionId)) || [];
-  return new Map(filas.map((f) => [f.exercise_id, f]));
+  return new Map(filas.map((f) => [f.routine_exercise_id ?? f.exercise_id, f]));
 }
 
 /**
