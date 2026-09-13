@@ -17,6 +17,6 @@
 // `window.location.origin`, así migrar a drotracker.cl no toca código.
 // ============================================================
 
-export const SUPABASE_URL = 'https://TU-REF-DE-PROYECTO.supabase.co';
+export const SUPABASE_URL = 'https://xbepoxtrajjjuhwxmrtv.supabase.co';
 
-export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_TU_CLAVE_AQUI';
+export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_GtmrCD-baNwi67z3ZAudvA_Ic54vub5';

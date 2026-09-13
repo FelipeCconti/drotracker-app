@@ -147,10 +147,17 @@ monolito. Importante: los módulos ES no funcionan abriendo el archivo con `file
 hay que servirlo (ver punto 4).
 
 **3. El esquema se cambia con migraciones nuevas, nunca editando las viejas.** Una vez
-que `01_esquema.sql` y `02_roles_rls.sql` corrieron sobre datos reales, son historia: se
-agrega `03_...sql`, `04_...sql`, numerados y con fecha en el comentario de cabecera.
-Editar un archivo ya aplicado deja la base y el repo diciendo cosas distintas, que es la
-peor forma de perder una tarde.
+que `01_esquema.sql` y `02_roles_rls.sql` corrieron, son historia: se agrega `03_...sql`,
+`04_...sql`, numerados y con fecha en la cabecera.
+
+No es solo higiene, es que **editar el 01 no tiene efecto**: usa `create table if not
+exists`, así que sobre una base que ya existe no modifica nada y el cambio se pierde en
+silencio. Cambiar una columna o una clave foránea exige `alter table` en una migración
+propia. Toda migración lleva `if exists` / `if not exists` para poder repetirse, y
+termina con un `select` que comprueba que se aplicó.
+
+Numeración: `01`, `02` son la base; `03` en adelante, migraciones; `99_` en adelante,
+diagnósticos y pruebas que no cambian nada.
 
 **4. Probar local antes de publicar.** Desde la raíz del repo:
 
@@ -250,3 +257,58 @@ Hoy en el subdominio de GitHub. Si se migra a `drotracker.cl`, los únicos punto
 son el archivo `CNAME`, los DNS en NIC Chile, y las URLs autorizadas en Google Cloud y
 en Supabase Auth. Por eso el código nunca hardcodea la URL del sitio: usa
 `window.location.origin`.
+
+## La unidad de registro es el ejercicio, no la serie
+
+Quien está entrenando —o su coach— tiene que poder anotar rápido y con una mano. Por eso
+una fila de `set_logs` es **un ejercicio del día**: peso, cuántas series y a cuántas
+repeticiones se trabajó. "Press banca, 60 kg, 3 × 10" es una fila con tres datos, no tres
+filas.
+
+- `series` → cuántas series a ese peso
+- `reps` → las repeticiones de ese día
+- `n_serie` → null en el registro simple
+
+Si alguien quiere detallar serie por serie porque llevó pesos distintos, puede: varias
+filas con `series = 1` y `n_serie = 1, 2, 3`. Las consultas no cambian en ninguno de los
+dos casos:
+
+```
+volumen      = sum(peso * series * reps)
+carga máxima = max(peso)
+```
+
+**La interfaz debe optimizar para el caso simple.** Repetir el peso de la sesión anterior
+precargado, teclado numérico en el móvil, y guardar sin confirmaciones. Si registrar un
+día toma más de un minuto, la gente deja de hacerlo y la app se muere sola.
+
+## Migrar la planilla original
+
+`herramientas/migrar-planilla.js` convierte el Google Sheet original en SQL:
+
+```
+node herramientas/migrar-planilla.js planilla.csv tu-correo@gmail.com 2026-05-25 > sql/05_migracion.sql
+```
+
+El tercer argumento es el lunes en que empezó el ciclo 1, semana 1 — el único dato que la
+planilla no contiene. Para el historial de Felipe es **2026-05-25**, calculado desde que
+el Día 5 de la semana 16 fue el viernes 11-09-2026.
+
+Decisiones de la conversión, por si hay que revisarlas:
+
+- **Los pesos son lo levantado, no lo planificado.** Entran como `workout_sessions` +
+  `set_logs`, no como `exercise_targets`. La tabla de prescripción queda vacía hasta que
+  se planifique un ciclo nuevo.
+- **Las repeticiones no estaban registradas y quedan en `NULL`.** NULL dice "no se sabe";
+  un cero diría "no hizo ninguna", que es falso. Consecuencia a tener presente: el **1RM
+  estimado no se puede calcular** para los datos migrados, porque la fórmula de Epley
+  necesita las reps. La vista devuelve NULL ahí, y los gráficos deben omitir esos puntos
+  en vez de dibujar un cero. Desde el primer entrenamiento registrado en la app sí habrá
+  reps y el 1RM empieza a funcionar.
+- **"x3" se guarda como `series = 3` en una sola fila.**
+- **Las fechas están reconstruidas**: exactas a la semana, aproximadas al día. Cada sesión
+  importada lo dice en su `nota`, y esa nota es también la que usa el script para poder
+  reimportar sin duplicar.
+- **Una semana sin ningún peso no genera sesión.** No se inventan entrenamientos.
+- El nombre limpio del ejercicio va al catálogo **global**, así los 20 usuarios parten con
+  esos ejercicios cargados. El orden y las series pertenecen a la rutina.
