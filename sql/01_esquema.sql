@@ -103,7 +103,11 @@ create table if not exists routines (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references profiles(id) on delete cascade,
   nombre        text not null,
-  deriva_de     uuid references routines(id) on delete set null,
+  -- deferrable: la comprobación se hace al final de la transacción.
+  -- Sin esto, restaurar un respaldo exige privilegios de superusuario
+  -- que Supabase no da. Ver la migración 04.
+  deriva_de     uuid references routines(id) on delete set null
+                deferrable initially deferred,
   vigente_desde date not null default current_date,
   vigente_hasta date,                        -- null = es la vigente hoy
   creado        timestamptz not null default now(),
@@ -204,12 +208,20 @@ create index if not exists ix_sessions_ciclo      on workout_sessions(cycle_id, 
 -- (routine_exercise_id nulo). Sin esta columna, "el progreso de
 -- press banca" se corta cada vez que cambia la rutina.
 -- ------------------------------------------------------------
+-- Una fila por EJERCICIO del día, no por serie: registrar serie por
+-- serie en medio del entrenamiento es demasiado tedioso. "Press banca,
+-- 60 kg, 3 series de 10" es una fila con tres datos.
+--
+-- Quien quiera detallar cada serie (porque llevó pesos distintos)
+-- puede hacerlo: varias filas con series = 1 y n_serie = 1, 2, 3.
+-- Las consultas no cambian — volumen = peso * series * reps.
 create table if not exists set_logs (
   id                  uuid primary key default gen_random_uuid(),
   session_id          uuid not null references workout_sessions(id) on delete cascade,
   exercise_id         uuid not null references exercises(id),
   routine_exercise_id uuid references routine_exercises(id),   -- null = fuera del plan
-  n_serie             smallint not null,
+  series              smallint not null default 1,  -- cuántas series a este peso
+  n_serie             smallint,                     -- cuál serie, solo en registro detallado
   reps                smallint,
   peso                numeric(6,2),
   unidad              text not null default 'kg',   -- congelada: cambiar unidad hoy no reescribe el pasado
