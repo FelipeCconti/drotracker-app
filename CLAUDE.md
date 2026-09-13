@@ -293,6 +293,30 @@ carga máxima = max(peso)
 precargado, teclado numérico en el móvil, y guardar sin confirmaciones. Si registrar un
 día toma más de un minuto, la gente deja de hacerlo y la app se muere sola.
 
+Eso lo implementa `app/entrenar.js`, y hay cuatro decisiones ahí que conviene no
+deshacer sin querer:
+
+- **La precarga viene de `v_ultimo_registro`** (migración 09), una vista con `distinct on`
+  que responde "qué levanté la última vez en este ejercicio" en una sola consulta. Sin
+  ella harían falta N consultas por pantalla.
+- **La sesión se crea con el primer dato que se escribe**, no al abrir la pantalla; la
+  promesa se comparte entre filas (`asegurarSesion`) para que dos ejercicios guardados a
+  la vez no creen dos sesiones.
+- **Salir de un campo guarda, pero solo si se escribió algo.** Pasar por encima de una
+  fila precargada no debe crear un registro que nadie confirmó.
+- **Un guardado que falla no borra lo escrito.** La fila queda marcada y se reintenta
+  sola cuando vuelve la red (`window.addEventListener('online', …)`). En un subterráneo
+  con señal mala, perder lo tecleado es imperdonable.
+
+## Las pruebas de RLS no cuentan filas de toda la base
+
+`sql/99_pruebas_rls.sql` acota sus conteos a sus cinco usuarios de prueba. Una prueba
+como `select count(*) from workout_sessions` da 2 en una base vacía y 81 en producción:
+diría FALLA sin que nada estuviera mal. Una suite que cría falsos positivos se deja de
+mirar, y entonces ya no protege nada. **Al agregar una prueba nueva, acotarla a los
+usuarios de prueba** — salvo las de cuentas pendientes, que deben ver cero de todo el
+mundo y por eso sí cuentan sin filtro.
+
 ## Migrar la planilla original
 
 `herramientas/migrar-planilla.js` convierte el Google Sheet original en SQL:

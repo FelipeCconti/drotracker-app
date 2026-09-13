@@ -1,0 +1,798 @@
+/* ============================================================
+   DRO.TRACKER · componentes
+   Todo en términos de las variables de css/tokens.css. Ni un color,
+   ni una fuente, ni una medida literal acá: cambiar la identidad
+   visual entera tiene que ser editar tokens.css y nada más.
+   ============================================================ */
+
+/* ---- Armazón ---- */
+
+.app-marco {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--fuente-texto);
+  color: var(--color-texto);
+  background: var(--color-fondo);
+}
+
+.app-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--color-superficie);
+  border-bottom: var(--borde-fino);
+}
+
+.app-marca {
+  font-family: var(--fuente-titulo);
+  font-weight: var(--peso-fuerte);
+  font-size: var(--texto-lg);
+  letter-spacing: 0.02em;
+  color: var(--color-acento-fuerte);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.app-nav {
+  display: flex;
+  gap: var(--esp-1);
+  margin-left: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.app-nav::-webkit-scrollbar { display: none; }
+
+.app-nav-item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--color-texto-debil);
+  font-family: inherit;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--trans-rapida), background var(--trans-rapida);
+}
+.app-nav-item:hover:not(:disabled) { color: var(--color-texto); background: var(--color-superficie-alta); }
+.app-nav-item--activo { color: var(--color-texto); background: var(--color-superficie-alta); }
+.app-nav-item:disabled { opacity: 0.4; cursor: default; }
+
+.app-salir {
+  appearance: none;
+  border: var(--borde-fino);
+  background: transparent;
+  color: var(--color-texto-tenue);
+  font-family: inherit;
+  font-size: var(--texto-sm);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+}
+.app-salir:hover { color: var(--color-texto); border-color: var(--color-acento); }
+
+.app-cuerpo {
+  flex: 1;
+  width: 100%;
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--esp-4);
+}
+
+/* ---- Estados de pantalla ---- */
+
+.cargando {
+  padding: var(--esp-8) var(--esp-4);
+  text-align: center;
+  color: var(--color-texto-debil);
+  font-size: var(--texto-sm);
+}
+
+.vacio {
+  padding: var(--esp-7) var(--esp-5);
+  text-align: center;
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-lg);
+}
+.vacio-titulo {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-xl);
+  margin: 0 0 var(--esp-3);
+  color: var(--color-texto);
+}
+.vacio-texto {
+  margin: 0 auto;
+  max-width: 48ch;
+  color: var(--color-texto-tenue);
+  line-height: var(--interlinea-normal);
+}
+
+.boton {
+  margin-top: var(--esp-4);
+  cursor: pointer;
+  padding: var(--esp-3) var(--esp-5);
+  font-family: var(--fuente-texto);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  border: none;
+  border-radius: var(--radio-sm);
+}
+.boton:hover { background: var(--color-acento-fuerte); }
+
+/* ---- Selector de atleta (solo para coaches) ---- */
+
+.selector-atleta {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--esp-4);
+  padding: var(--esp-3);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+}
+
+.marca-coach {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  padding: var(--esp-1) var(--esp-2);
+  border-radius: var(--radio-full);
+  font-weight: var(--peso-semi);
+}
+
+/* ---- Días ---- */
+
+/* Rejilla de columnas iguales, no flex: así los días miden todos lo
+   mismo sin importar el largo de su nombre, y siguen midiendo lo mismo
+   si alguien entrena siete días. Cuando no caben, la barra se desplaza
+   en vez de encoger las fichas hasta lo ilegible. */
+.barra-dias {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(8.5rem, 1fr);
+  align-items: stretch;
+  gap: var(--esp-2);
+  overflow-x: auto;
+  padding-bottom: var(--esp-2);
+  margin-bottom: var(--esp-4);
+  scrollbar-width: none;
+}
+.barra-dias::-webkit-scrollbar { display: none; }
+
+.chip {
+  appearance: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  min-height: 3.5rem;
+  padding: var(--esp-2) var(--esp-3);
+  font-family: var(--fuente-texto);
+  color: var(--color-texto-tenue);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+  transition: border-color var(--trans-rapida), background var(--trans-rapida);
+}
+.chip:hover { border-color: var(--color-acento-suave); }
+.chip--activo {
+  background: var(--color-superficie-alta);
+  border-color: var(--color-acento);
+  color: var(--color-texto);
+}
+.chip-orden {
+  font-family: var(--fuente-titulo);
+  font-weight: var(--peso-semi);
+  font-size: var(--texto-sm);
+  letter-spacing: 0.03em;
+}
+.chip-nombre {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip--activo .chip-nombre { color: var(--color-texto-tenue); }
+
+/* ---- Fecha, ciclo y semana ---- */
+
+.contexto {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--esp-5);
+}
+.contexto-fecha {
+  margin: 0 0 var(--esp-2);
+  font-size: var(--texto-sm);
+  color: var(--color-texto-debil);
+  text-transform: lowercase;
+}
+
+/* ---- Campos ---- */
+
+.campo, .campo-chico {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+}
+.campo { flex: 1 1 0; min-width: 0; }
+/* El desplegable de ejercicios lleva nombres largos: que respire. */
+.campo-chico--ancho .entrada--select { min-width: 16rem; max-width: 100%; }
+
+.campo-etiqueta {
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto-debil);
+  letter-spacing: 0.02em;
+}
+
+.entrada {
+  width: 100%;
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  border: var(--borde-fino);
+  border-radius: var(--radio-sm);
+  padding: var(--esp-3);
+  transition: border-color var(--trans-rapida);
+}
+.entrada:focus {
+  outline: none;
+  border-color: var(--color-foco);
+  box-shadow: 0 0 0 2px var(--color-acento-suave);
+}
+.entrada::placeholder { color: var(--color-texto-debil); }
+
+.entrada--num, .entrada--peso { text-align: center; }
+.entrada--fecha, .entrada--select {
+  font-family: var(--fuente-texto);
+  font-size: var(--texto-md);
+  width: auto;
+}
+.entrada--num { max-width: 6rem; }
+
+/* ---- Lista de ejercicios ---- */
+
+.lista-ejercicios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-3);
+}
+
+.ejercicio {
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+  padding: var(--esp-4);
+}
+
+.ejercicio-cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-3);
+}
+
+.ejercicio-orden {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto-debil);
+  background: var(--color-superficie-alta);
+  border-radius: var(--radio-full);
+}
+
+.ejercicio-titulo { flex: 1; min-width: 0; }
+
+.ejercicio-nombre {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  letter-spacing: 0.01em;
+  color: var(--color-texto);
+}
+
+.ejercicio-referencia {
+  margin: 2px 0 0;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  font-family: var(--fuente-mono);
+}
+
+.ejercicio-campos { display: flex; gap: var(--esp-3); }
+
+.ejercicio-editado {
+  margin: var(--esp-2) 0 0;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  font-style: italic;
+}
+
+/* ---- Estado de guardado por fila ---- */
+
+.estado {
+  flex: 0 0 auto;
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  padding: var(--esp-1) var(--esp-2);
+  border-radius: var(--radio-full);
+  white-space: nowrap;
+  transition: opacity var(--trans-normal);
+}
+.estado--limpio    { opacity: 0; }
+.estado--guardando { color: var(--color-texto-debil); }
+.estado--guardado  { color: var(--color-progreso); background: var(--color-progreso-tenue); }
+.estado--error     { color: var(--color-estancamiento); background: var(--color-estancamiento-tenue); }
+
+.pie-nota {
+  margin: var(--esp-5) 0 var(--esp-7);
+  text-align: center;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+
+/* ---- Avisos ---- */
+
+.avisos {
+  position: fixed;
+  left: 50%;
+  bottom: var(--esp-4);
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  width: min(32rem, calc(100vw - 2 * var(--esp-4)));
+  pointer-events: none;
+}
+
+.aviso {
+  padding: var(--esp-3) var(--esp-4);
+  border-radius: var(--radio-md);
+  font-size: var(--texto-sm);
+  background: var(--color-superficie-alta);
+  color: var(--color-texto);
+  border: var(--borde-fino);
+  box-shadow: var(--sombra-md);
+  transition: opacity var(--trans-normal), transform var(--trans-normal);
+}
+.aviso--error {
+  background: var(--color-estancamiento-tenue);
+  border-color: var(--color-estancamiento);
+}
+.aviso--saliendo { opacity: 0; transform: translateY(var(--esp-2)); }
+
+/* ---- Teléfono ---- */
+
+@media (max-width: 640px) {
+  .app-cuerpo { padding: var(--esp-3); }
+  .app-cabecera { padding: var(--esp-2) var(--esp-3); }
+  .app-marca { font-size: var(--texto-md); }
+
+  /* Los tres campos siguen en una fila: el pulgar los alcanza todos
+     sin desplazarse, que es de lo que se trata. */
+  .ejercicio-campos { gap: var(--esp-2); }
+  .entrada { padding: var(--esp-3) var(--esp-2); font-size: var(--texto-md); }
+  .entrada--num { max-width: none; }
+  .ejercicio { padding: var(--esp-3); }
+  .barra-dias { grid-auto-columns: minmax(7.5rem, 1fr); }
+  .contexto { gap: var(--esp-2); }
+  .contexto-fecha { flex-basis: 100%; margin: 0; }
+}
+
+/* ============================================================
+   PROGRESO
+   ============================================================ */
+
+.subtabs {
+  display: flex;
+  gap: var(--esp-1);
+  margin-bottom: var(--esp-4);
+  padding: var(--esp-1);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+  width: fit-content;
+}
+
+.subtab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--color-texto-debil);
+  font-family: inherit;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  padding: var(--esp-2) var(--esp-4);
+  border-radius: var(--radio-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.subtab:hover { color: var(--color-texto); }
+.subtab--activo { color: var(--color-texto); background: var(--color-superficie-alta); }
+
+/* Los filtros siempre en una fila arriba de los gráficos. */
+.filtros {
+  display: flex;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: var(--esp-4);
+}
+
+.titulo-dia {
+  margin: 0 0 var(--esp-2);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semi);
+  letter-spacing: 0.01em;
+  color: var(--color-texto);
+}
+
+.nota-vista {
+  margin: 0 0 var(--esp-4);
+  max-width: 60ch;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-debil);
+  line-height: var(--interlinea-normal);
+}
+
+/* ---- El récord ---- */
+
+/* El símbolo del récord: le da el énfasis que un número solo no tiene. */
+.pr-simbolo {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  border-radius: var(--radio-full);
+}
+
+.pr {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+  padding: var(--esp-4) var(--esp-5);
+  margin-bottom: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+}
+
+.pr-numero { display: flex; flex-direction: column; gap: var(--esp-1); }
+
+.pr-valor {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-2xl);
+  font-weight: var(--peso-fuerte);
+  line-height: var(--interlinea-apretada);
+  color: var(--color-texto);
+}
+.pr-valor small {
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto-debil);
+  margin-left: var(--esp-1);
+}
+.pr-etiqueta { font-size: var(--texto-xs); color: var(--color-texto-debil); }
+
+/* La barra cargada con discos. Decorativa: el dato es el número. */
+.pr-barra {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 4rem;
+  padding-left: var(--esp-2);
+}
+.barra-manga {
+  width: 10px; height: 12px;
+  background: var(--color-texto-debil);
+  border-radius: 2px;
+}
+.barra-eje {
+  width: 2.5rem; height: 5px;
+  background: var(--color-texto-debil);
+  border-radius: var(--radio-full);
+}
+.disco {
+  display: grid;
+  place-items: center;
+  width: 13px;
+  min-height: 45%;
+  font-family: var(--fuente-mono);
+  font-size: 8px;
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  border-radius: 3px;
+  writing-mode: vertical-rl;
+}
+.pr-nota {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+
+/* ---- Figuras ---- */
+
+.grafico-figura {
+  margin: 0 0 var(--esp-4);
+  padding: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+}
+
+.grafico-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--esp-3);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.grafico-sub {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-normal);
+  color: var(--color-texto-debil);
+}
+
+.grafico-lienzo { position: relative; height: 320px; }
+
+.leyenda {
+  display: flex;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+  margin-top: var(--esp-3);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-tenue);
+}
+.leyenda-item { display: flex; align-items: center; gap: var(--esp-2); }
+.leyenda-marca {
+  width: 14px; height: 3px;
+  border-radius: var(--radio-full);
+}
+.leyenda-marca--guion {
+  height: 0;
+  width: 16px;
+  background: none;
+  border-top: 3px dashed var(--grafico-serie-2);
+}
+
+/* ---- Gráficos pequeños, uno por ejercicio ---- */
+
+/* Dos por fila en el computador, uno por fila en el teléfono. Menos
+   gráficos por fila = cada uno más ancho = más columnas visibles sin
+   desplazarse. Se recorre hacia abajo, que es el gesto natural. */
+.multiples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--esp-3);
+}
+
+.multiple {
+  margin: 0;
+  padding: var(--esp-3);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+  transition: border-color var(--trans-rapida);
+}
+.multiple:hover { border-color: var(--color-acento-suave); }
+
+/* El título es el botón que abre el ejercicio a pantalla completa. */
+.multiple-abrir {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0;
+  margin-bottom: var(--esp-2);
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.multiple-linea {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  min-width: 0;
+}
+/* Las series van en el título, con su peso: definen el ejercicio.
+   No se encogen ni se recortan aunque el nombre sea largo. */
+.multiple-series {
+  flex: 0 0 auto;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+  white-space: nowrap;
+}
+.multiple-linea > .multiple-lupa { margin-left: auto; }
+.titulo-series {
+  font-weight: var(--peso-semi);
+  color: var(--color-texto-tenue);
+}
+
+/* La unidad y las repeticiones: detalle de lectura del gráfico. */
+.multiple-meta {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+.multiple-titulo {
+  /* Cede espacio con puntos suspensivos si el nombre es largo, pero no
+     empuja a las series al otro extremo: el título se lee seguido,
+     "Press banca con barra – 3 series". */
+  flex: 0 1 auto;
+  min-width: 2rem;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* La lupa tiene que leerse como un botón, no como un adorno: por eso
+   va en un círculo propio y con el color de acento. Es la única pista
+   de que la tarjeta se puede abrir. */
+.multiple-lupa {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--color-acento-fuerte);
+  background: var(--color-superficie-alta);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-full);
+  transition: color var(--trans-rapida), background var(--trans-rapida), border-color var(--trans-rapida);
+}
+.multiple-abrir:hover .multiple-lupa,
+.multiple-abrir:focus-visible .multiple-lupa {
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  border-color: var(--color-acento);
+}
+.multiple-abrir:focus-visible { outline: 2px solid var(--color-foco); outline-offset: 3px; border-radius: var(--radio-sm); }
+
+.volver {
+  appearance: none;
+  cursor: pointer;
+  margin-bottom: var(--esp-3);
+  padding: var(--esp-2) var(--esp-3);
+  font-family: var(--fuente-texto);
+  font-size: var(--texto-sm);
+  color: var(--color-texto-tenue);
+  background: transparent;
+  border: var(--borde-fino);
+  border-radius: var(--radio-sm);
+}
+.volver:hover { color: var(--color-texto); border-color: var(--color-acento); }
+/* Cuando las barras no caben, el gráfico se desliza en lugar de
+   apretarlas hasta que no se lean. En el teléfono esto es la
+   diferencia entre un gráfico útil y una mancha. */
+.multiple-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.multiple-lienzo { position: relative; height: 180px; }
+
+/* ---- Explicación de una métrica ---- */
+
+.explicacion {
+  margin-bottom: var(--esp-4);
+  padding: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-left: 3px solid var(--color-acento-suave);
+  border-radius: var(--radio-md);
+  max-width: 68ch;
+}
+.explicacion-titulo {
+  margin: 0 0 var(--esp-2);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.explicacion p {
+  margin: 0 0 var(--esp-2);
+  font-size: var(--texto-sm);
+  line-height: var(--interlinea-normal);
+  color: var(--color-texto-tenue);
+}
+.explicacion p:last-child { margin-bottom: 0; }
+.explicacion code {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  padding: 1px var(--esp-1);
+  background: var(--color-superficie-alta);
+  border-radius: var(--radio-sm);
+  color: var(--color-texto);
+}
+.explicacion-aviso { color: var(--color-texto-debil); }
+
+/* ---- Tabla de datos: el gráfico nunca es la única forma de leerlo ---- */
+
+.tabla-datos {
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+  padding: var(--esp-3) var(--esp-4);
+}
+.tabla-datos summary {
+  cursor: pointer;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-tenue);
+}
+.tabla-envoltura { overflow-x: auto; margin-top: var(--esp-3); }
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+}
+.tabla th, .tabla td {
+  padding: var(--esp-2) var(--esp-3);
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-borde-tenue);
+}
+.tabla th:first-child, .tabla td:first-child { text-align: left; }
+.tabla th { color: var(--color-texto-debil); font-weight: var(--peso-medio); }
+.tabla td { color: var(--color-texto-tenue); }
+
+@media (max-width: 640px) {
+  .grafico-lienzo { height: 260px; }
+  .multiples { grid-template-columns: 1fr; }
+  .multiple-lienzo { height: 200px; }
+  .campo-chico--ancho .entrada--select { min-width: 0; width: 100%; }
+  .filtros > .campo-chico { flex: 1 1 100%; }
+  .pr { gap: var(--esp-3); padding: var(--esp-3); }
+}

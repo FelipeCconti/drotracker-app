@@ -12,6 +12,15 @@
 
 :root {
 
+  /* Le dice al navegador que esta app es oscura. Sin esto los controles
+     NATIVOS —el icono del calendario de <input type="date">, su
+     selector desplegable, las barras de desplazamiento— se dibujan en
+     su versión clara y quedan ilegibles sobre el azul. No es un color
+     que se elija: es el modo en que el sistema pinta lo que no es
+     nuestro. Si algún día la app tiene tema claro, esta línea cambia
+     junto con el resto de los tokens. */
+  color-scheme: dark;
+
   /* ---- Gama azul: la rampa cruda, del claro al oscuro ---- */
   --azul-050: #e6edf1;
   --azul-100: #cdd9e0;
@@ -49,6 +58,23 @@
   --color-progreso-tenue:  #33513a;
   --color-estancamiento:       #c1585a;   /* sin avance, retroceso, error */
   --color-estancamiento-tenue: #4a2b2d;
+
+  /* ---- Gráficos ----
+     Dos series como máximo por gráfico, y estos dos pasos en concreto:
+     son los que superan la comprobación de separación visual sobre el
+     fondo de las tarjetas (ΔE 29 con visión normal, 28,5 con protanopía,
+     contraste ≥ 3:1). Pasos más cercanos de la misma rampa se confunden
+     entre sí. Si se cambian, hay que volver a comprobarlo.
+
+     Para comparar MÁS de dos cosas no se agregan colores: se usan
+     gráficos pequeños uno al lado del otro. Una rampa de un solo azul
+     no puede cargar identidad de ocho categorías, y forzarla es lo que
+     produce gráficos que nadie puede leer. */
+  --grafico-serie-1: var(--azul-050);
+  --grafico-serie-2: var(--azul-400);
+  --grafico-rejilla: var(--azul-800);
+  --grafico-eje:     var(--azul-500);
+  --grafico-marca:   var(--azul-600);
 
   /* ---- Tipografía ---- */
   --fuente-titulo: 'Oswald', 'Arial Narrow', 'Helvetica Neue', sans-serif;

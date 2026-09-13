@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#142a36">
 <title>DRO.TRACKER</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
 <style>
-  /* Reset mínimo. El resto del estilo vive en css/tokens.css y en cada módulo de app/. */
+  /* Reset mínimo. El resto del estilo vive en css/tokens.css y css/app.css. */
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body { background: var(--color-fondo); }
@@ -19,89 +21,68 @@
 
 <!-- Librerías vendorizadas en vendor/, nunca un <script src="https://..."> a un CDN. -->
 <script src="vendor/supabase.js"></script>
+<script src="vendor/chart.js"></script>
 
 <script type="module">
+  // ==========================================================
+  // Armazón de la app.
+  //
+  // Una pantalla por módulo en app/. Agregar una es agregar un
+  // archivo y una línea en PANTALLAS: sin bundler, sin monolito.
+  // ==========================================================
   import { protegerApp, cerrarSesion } from './app/auth.js';
+  import { montarEntrenar } from './app/entrenar.js';
+  import { montarProgreso } from './app/progreso.js';
+  import { esc } from './app/ui.js';
 
-  // Placeholder hasta que existan las pantallas reales (rutina, entrenar,
-  // progreso, composición, admin) — cada una su propio módulo en app/, como
-  // manda CLAUDE.md. Esto solo confirma que el login end-to-end funciona.
-  function pantallaInicio({ perfil }) {
-    const cont = document.getElementById('app');
-    cont.innerHTML = `
-      <div class="inicio-envoltura">
-        <div class="inicio-tarjeta">
-          <h1 class="inicio-marca">DRO.TRACKER</h1>
-          <p class="inicio-texto">
-            Hola, <strong>${escHtml(perfil.nombre || perfil.email)}</strong>.
-            Sesión activa como <strong>${escHtml(perfil.rol)}</strong>.
-          </p>
-          <p class="inicio-nota">
-            Las pantallas de rutina, entrenamiento, progreso y composición
-            todavía no están montadas — esto solo prueba que Supabase Auth y
-            el estado de la cuenta funcionan de punta a punta.
-          </p>
-          <button id="inicio-salir" class="inicio-boton" type="button">Cerrar sesión</button>
-        </div>
+  const PANTALLAS = [
+    { id: 'entrenar',    titulo: 'Entrenar',    montar: montarEntrenar },
+    { id: 'progreso',    titulo: 'Progreso',    montar: montarProgreso },
+    { id: 'composicion', titulo: 'Composición', montar: null },
+    { id: 'rutina',      titulo: 'Rutina',      montar: null },
+  ];
+
+  function arrancar({ perfil }) {
+    document.getElementById('app').innerHTML = `
+      <div class="app-marco">
+        <header class="app-cabecera">
+          <h1 class="app-marca">DRO.TRACKER</h1>
+          <nav class="app-nav">
+            ${PANTALLAS.map((p) => `
+              <button class="app-nav-item" data-pantalla="${p.id}"
+                      ${p.montar ? '' : 'disabled title="Todavía no está montada"'}>
+                ${esc(p.titulo)}
+              </button>`).join('')}
+          </nav>
+          <button class="app-salir" id="salir" type="button">Salir</button>
+        </header>
+        <main class="app-cuerpo" id="cuerpo"></main>
       </div>`;
-    document.getElementById('inicio-salir').addEventListener('click', cerrarSesion);
+
+    const cuerpo = document.getElementById('cuerpo');
+    document.getElementById('salir').addEventListener('click', cerrarSesion);
+
+    function ir(id) {
+      const p = PANTALLAS.find((x) => x.id === id);
+      if (!p?.montar) return;
+      document.querySelectorAll('[data-pantalla]').forEach((b) => {
+        b.classList.toggle('app-nav-item--activo', b.dataset.pantalla === id);
+      });
+      // El hash mantiene la pantalla al recargar y hace que el botón
+      // "atrás" del teléfono haga lo esperable.
+      if (location.hash.slice(1) !== id) history.replaceState(null, '', `#${id}`);
+      p.montar(cuerpo, perfil);
+    }
+
+    document.querySelectorAll('[data-pantalla]').forEach((b) => {
+      b.addEventListener('click', () => ir(b.dataset.pantalla));
+    });
+
+    const inicial = PANTALLAS.find((p) => p.id === location.hash.slice(1) && p.montar);
+    ir(inicial ? inicial.id : 'entrenar');
   }
 
-  function escHtml(v) {
-    return String(v).replace(/[&<>"']/g, (c) => (
-      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    ));
-  }
-
-  const estilo = document.createElement('style');
-  estilo.textContent = `
-    .inicio-envoltura {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--esp-5);
-      font-family: var(--fuente-texto);
-      color: var(--color-texto);
-    }
-    .inicio-tarjeta {
-      max-width: var(--ancho-tarjeta);
-      width: 100%;
-      background: var(--color-superficie);
-      border: var(--borde-fino);
-      border-radius: var(--radio-lg);
-      box-shadow: var(--sombra-md);
-      padding: var(--esp-6);
-      display: flex;
-      flex-direction: column;
-      gap: var(--esp-4);
-    }
-    .inicio-marca {
-      font-family: var(--fuente-titulo);
-      font-weight: var(--peso-fuerte);
-      font-size: var(--texto-2xl);
-      margin: 0;
-      color: var(--color-acento-fuerte);
-    }
-    .inicio-texto { margin: 0; color: var(--color-texto-tenue); line-height: var(--interlinea-normal); }
-    .inicio-texto strong { color: var(--color-texto); }
-    .inicio-nota { margin: 0; font-size: var(--texto-sm); color: var(--color-texto-debil); }
-    .inicio-boton {
-      align-self: flex-start;
-      cursor: pointer;
-      padding: var(--esp-3) var(--esp-5);
-      font-family: var(--fuente-texto);
-      font-weight: var(--peso-semi);
-      color: var(--color-texto-sobre-acento);
-      background: var(--color-acento);
-      border: none;
-      border-radius: var(--radio-sm);
-    }
-    .inicio-boton:hover { background: var(--color-acento-fuerte); }
-  `;
-  document.head.appendChild(estilo);
-
-  protegerApp({ alEntrar: pantallaInicio });
+  protegerApp({ alEntrar: arrancar });
 </script>
 </body>
 </html>

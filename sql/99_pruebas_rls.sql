@@ -89,6 +89,8 @@ begin
   insert into _pruebas_rls values (2, 'Eva pendiente ve sesiones', n::text, '0');
   select count(*) into n from body_measurements;
   insert into _pruebas_rls values (3, 'Eva pendiente ve mediciones', n::text, '0');
+  -- (estas dos sí van sin filtro: un pendiente no debe ver NADA de
+  --  nadie, ni siquiera de usuarios que no son de prueba)
   select count(*) into n from exercises;
   insert into _pruebas_rls values (4, 'Eva pendiente ve el catálogo', n::text, '0');
 
@@ -101,7 +103,7 @@ begin
     json_build_object('sub', BEA, 'role','authenticated')::text, true);
   execute 'set local role authenticated';
 
-  select count(*) into n from workout_sessions;
+  select count(*) into n from workout_sessions where user_id in (FELIPE, BEA, CARLOS, DIEGO, EVA);
   insert into _pruebas_rls values (5, 'Bea ve solo su sesión', n::text, '1');
 
   select count(*) into n from workout_sessions where user_id = CARLOS;
@@ -195,10 +197,14 @@ begin
     json_build_object('sub', FELIPE, 'role','authenticated')::text, true);
   execute 'set local role authenticated';
 
-  select count(*) into n from workout_sessions;
+  -- Acotado a los usuarios de prueba A PROPÓSITO. Contar todas las
+  -- filas de la base haría que esta prueba fallara en cuanto hubiera
+  -- datos reales: diría "FALLA" sin que nada esté mal, y una suite que
+  -- cría falsos positivos se deja de mirar.
+  select count(*) into n from workout_sessions where user_id in (BEA, CARLOS);
   insert into _pruebas_rls values (18, 'Admin ve el entrenamiento de todos', n::text, '2');
 
-  select count(*) into n from body_measurements where user_id <> FELIPE;
+  select count(*) into n from body_measurements where user_id in (BEA, CARLOS);
   insert into _pruebas_rls values (19, 'Admin ve composición ajena', n::text, '0');
 
   begin
@@ -381,6 +387,25 @@ begin
   exception when others then
     insert into _pruebas_rls values (34, 'Admin reasigna borrando e insertando', 'RECHAZADO', 'PERMITIDO');
   end;
+
+  execute 'reset role';
+
+  -- ==========================================================
+  -- LAS VISTAS (migración 09)
+  --
+  -- Una vista sin security_invoker se ejecuta con los permisos de
+  -- quien la creó y se salta RLS entera: cualquiera vería el
+  -- historial de todos. Esto lo comprueba en vez de suponerlo.
+  -- ==========================================================
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', BEA, 'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into n from v_historial_ejercicio where user_id = CARLOS;
+  insert into _pruebas_rls values (35, 'Bea ve el historial de Carlos (vista)', n::text, '0');
+
+  select count(*) into n from v_ultimo_registro where user_id = CARLOS;
+  insert into _pruebas_rls values (36, 'Bea ve el último registro de Carlos (vista)', n::text, '0');
 
   execute 'reset role';
 
