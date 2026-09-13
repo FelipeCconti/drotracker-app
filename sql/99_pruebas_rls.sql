@@ -25,6 +25,8 @@
 --   · La composición corporal no se ve sin permiso expreso del dueño
 --   · El admin ve el entrenamiento de todos y la composición de nadie
 --   · Nadie puede ascenderse a sí mismo ni auto-aprobarse
+--   · El plan se crea, reordena y sucede sin perder historial, y un
+--     día con entrenamientos registrados no se puede borrar
 -- ============================================================
 
 drop table if exists _pruebas_rls;
@@ -415,6 +417,149 @@ begin
   delete from auth.users where id in (FELIPE, BEA, CARLOS, DIEGO, EVA);
   delete from invitaciones where email like '%@prueba.local';
   delete from exercises where id = EJERCICIO;
+end $$;
+
+-- ============================================================
+-- SEGUNDA TANDA · configurar la rutina (pruebas 37 a 51)
+--
+-- Usa dos usuarios propios y los borra al terminar, igual que la
+-- primera. Comprueba el flujo completo de la pantalla de rutina:
+-- crear, reordenar, quitar (que es lógico, no físico), suceder una
+-- rutina conservando el historial, y los dos permisos del coach.
+--
+-- La prueba 42 es la que importa más de lo que parece: un día con
+-- entrenamientos registrados NO se puede borrar, y esa negativa es
+-- deliberada.
+-- ============================================================
+do $$
+declare
+  ANA constant uuid := '10000000-0000-0000-0000-000000000001';
+  COACH constant uuid := '10000000-0000-0000-0000-000000000002';
+  r uuid; d1 uuid; d2 uuid; ej uuid; re1 uuid; re2 uuid; nueva uuid;
+  n int; txt text;
+begin
+  -- El montaje corre sin sesión de usuario, igual que el editor SQL.
+  -- Se declara explícitamente en vez de confiar en que la variable
+  -- venga vacía: al terminar el bloque anterior queda una cadena vacía,
+  -- y una cadena vacía no es un JSON válido.
+  perform set_config('request.jwt.claims', json_build_object('role','service')::text, true);
+
+  delete from auth.users where id in (ANA, COACH);
+  delete from invitaciones where email like '%@rt.local';
+  insert into invitaciones (email) values ('ana@rt.local'), ('coach@rt.local');
+  insert into auth.users (id, email) values (ANA,'ana@rt.local'), (COACH,'coach@rt.local');
+  update profiles set rol='coach' where id = COACH;
+  insert into coach_links (coach_id, atleta_id, puede_editar_plan) values (COACH, ANA, true);
+
+  -- ===== ANA arma su rutina =====
+  perform set_config('request.jwt.claims', json_build_object('sub',ANA,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  insert into routines (user_id, nombre) values (ANA,'Hipertrofia') returning id into r;
+  insert into _pruebas_rls values (37,'El atleta crea su rutina', case when r is null then 'NO' else 'SÍ' end,'SÍ');
+
+  insert into routine_days (routine_id, orden, nombre) values (r,1,'Día 1') returning id into d1;
+  insert into routine_days (routine_id, orden, nombre) values (r,2,'Día 2') returning id into d2;
+
+  insert into exercises (user_id, nombre, es_global) values (ANA,'Remo propio',false) returning id into ej;
+  insert into _pruebas_rls values (38,'El atleta crea un ejercicio propio', case when ej is null then 'NO' else 'SÍ' end,'SÍ');
+
+  begin
+    insert into exercises (user_id, nombre, es_global) values (ANA,'Truco global',true);
+    insert into _pruebas_rls values (39,'El atleta se cuela al catálogo global','PERMITIDO','RECHAZADO');
+  exception when others then
+    insert into _pruebas_rls values (39,'El atleta se cuela al catálogo global','RECHAZADO','RECHAZADO');
+  end;
+
+  insert into routine_exercises (routine_day_id, exercise_id, orden, series_base)
+    values (d1, ej, 1, 3) returning id into re1;
+  insert into routine_exercises (routine_day_id, exercise_id, orden, series_base)
+    values (d1, ej, 2, 4) returning id into re2;
+
+  -- intercambio de orden, como lo hace la pantalla
+  update routine_exercises set orden = 2 where id = re1;
+  update routine_exercises set orden = 1 where id = re2;
+  select orden into n from routine_exercises where id = re1;
+  insert into _pruebas_rls values (40,'Reordenar ejercicios', n::text,'2');
+
+  -- quitar = borrado lógico
+  update routine_exercises set activo = false where id = re2;
+  select count(*) into n from routine_exercises where routine_day_id = d1 and activo;
+  insert into _pruebas_rls values (41,'Quitar deja el otro activo', n::text,'1');
+  select count(*) into n from routine_exercises where id = re2;
+  insert into _pruebas_rls values (42,'La fila quitada sigue existiendo', n::text,'1');
+
+  -- un día con historial no se borra
+  insert into workout_sessions (user_id, routine_day_id, fecha) values (ANA, d2, current_date);
+  begin
+    delete from routine_days where id = d2;
+    insert into _pruebas_rls values (43,'Borrar un día con historial','PERMITIDO','RECHAZADO');
+  exception when others then
+    insert into _pruebas_rls values (43,'Borrar un día con historial','RECHAZADO','RECHAZADO');
+  end;
+
+  -- suceder la rutina
+  select public.suceder_rutina(r, 'Hipertrofia v2') into nueva;
+  insert into _pruebas_rls values (44,'Suceder la rutina', case when nueva is null then 'NO' else 'SÍ' end,'SÍ');
+
+  select count(*) into n from routines where user_id = ANA and vigente_hasta is null;
+  insert into _pruebas_rls values (45,'Queda una sola rutina vigente', n::text,'1');
+
+  select count(*) into n from routine_days where routine_id = nueva;
+  insert into _pruebas_rls values (46,'La sucesora copió los días', n::text,'2');
+
+  select count(*) into n from routine_exercises re join routine_days d on d.id = re.routine_day_id
+   where d.routine_id = nueva;
+  insert into _pruebas_rls values (47,'Copió solo los ejercicios activos', n::text,'1');
+
+  select count(*) into n from workout_sessions where user_id = ANA and routine_day_id = d2;
+  insert into _pruebas_rls values (48,'El historial sigue en la rutina vieja', n::text,'1');
+
+  execute 'reset role';
+
+  -- ===== EL COACH edita el plan de Ana =====
+  perform set_config('request.jwt.claims', json_build_object('sub',COACH,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select id into d1 from routine_days where routine_id = nueva and orden = 1;
+  begin
+    update routine_days set nombre = 'Empuje (por el coach)' where id = d1;
+    insert into _pruebas_rls values (49,'Coach con permiso edita el plan',
+      case when found then 'PERMITIDO' else 'RECHAZADO' end,'PERMITIDO');
+  exception when others then
+    insert into _pruebas_rls values (49,'Coach con permiso edita el plan','RECHAZADO','PERMITIDO');
+  end;
+
+  -- pero no el registro: puede_registrar sigue apagado
+  begin
+    insert into workout_sessions (user_id, fecha) values (ANA, current_date - 1);
+    insert into _pruebas_rls values (50,'Coach del plan escribe el registro','PERMITIDO','RECHAZADO');
+  exception when others then
+    insert into _pruebas_rls values (50,'Coach del plan escribe el registro','RECHAZADO','RECHAZADO');
+  end;
+
+  execute 'reset role';
+
+  -- ===== Ana le quita el permiso de plan =====
+  perform set_config('request.jwt.claims', json_build_object('sub',ANA,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+  update coach_links set puede_editar_plan = false where coach_id = COACH and atleta_id = ANA;
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims', json_build_object('sub',COACH,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+  begin
+    update routine_days set nombre = 'otra vez' where id = d1;
+    insert into _pruebas_rls values (51,'Coach edita tras revocarle el plan',
+      case when found then 'PERMITIDO' else 'RECHAZADO' end,'RECHAZADO');
+  exception when others then
+    insert into _pruebas_rls values (51,'Coach edita tras revocarle el plan','RECHAZADO','RECHAZADO');
+  end;
+  execute 'reset role';
+
+  delete from auth.users where id in (ANA, COACH);
+  delete from invitaciones where email like '%@rt.local';
+  delete from exercises where nombre in ('Remo propio','Truco global');
 end $$;
 
 select n, prueba, obtenido, esperado,

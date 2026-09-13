@@ -262,3 +262,236 @@ export async function asegurarCiclo(routineId, numero) {
     return null;
   }
 }
+
+// ------------------------------------------------------------
+// Composición corporal
+//
+// Es el dato más sensible que guarda la app. Quien lo escribe es
+// SIEMPRE su dueño —ni el coach ni el admin— y quien lo lee es su
+// dueño más aquellos a los que él se lo concedió, uno por uno, en
+// composition_access. Estas funciones no reproducen esa lógica: la
+// hace cumplir RLS. Están escritas para que se note que existe.
+// ------------------------------------------------------------
+
+/** Perfil propio con los campos que la app puede editar. */
+export async function perfilCompleto(userId) {
+  return revisar(await supabase
+    .from('profiles')
+    .select('id, nombre, email, rol, estado, altura_cm, unidad_def')
+    .eq('id', userId)
+    .maybeSingle());
+}
+
+/** La altura vive en el perfil, no en cada medición: no cambia. */
+export async function guardarAltura(userId, alturaCm) {
+  return revisar(await supabase
+    .from('profiles')
+    .update({ altura_cm: alturaCm })
+    .eq('id', userId)
+    .select('altura_cm')
+    .single());
+}
+
+/** Mediciones con IMC y variaciones ya calculadas (vista v_composicion). */
+export async function mediciones(userId) {
+  return revisar(await supabase
+    .from('v_composicion')
+    .select('id, user_id, medido_en, peso_kg, grasa_pct, agua_pct, masa_muscular_kg, masa_osea_kg, grasa_visceral, cintura_cm, nota, actualizado_en, altura_cm, imc, delta_peso, delta_grasa, delta_peso_total, n_medicion')
+    .eq('user_id', userId)
+    .order('medido_en')) || [];
+}
+
+export async function crearMedicion(userId, campos) {
+  return revisar(await supabase
+    .from('body_measurements')
+    .insert({ user_id: userId, ...campos })
+    .select('id')
+    .single());
+}
+
+export async function actualizarMedicion(id, campos) {
+  return revisar(await supabase
+    .from('body_measurements')
+    .update(campos)
+    .eq('id', id)
+    .select('id')
+    .single());
+}
+
+export async function borrarMedicion(id) {
+  const { error } = await supabase.from('body_measurements').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Mis coaches, y si les concedí ver mi composición. */
+export async function misCoachesYAcceso(miId) {
+  const [vinculos, accesos] = await Promise.all([
+    supabase.from('coach_links')
+      .select('coach_id, profiles!coach_links_coach_id_fkey(id, nombre, email)')
+      .eq('atleta_id', miId),
+    supabase.from('composition_access').select('coach_id').eq('atleta_id', miId),
+  ]);
+  if (vinculos.error) throw vinculos.error;
+  if (accesos.error) throw accesos.error;
+
+  const concedidos = new Set((accesos.data || []).map((a) => a.coach_id));
+  return (vinculos.data || [])
+    .map((v) => v.profiles)
+    .filter(Boolean)
+    .map((p) => ({ ...p, tieneAcceso: concedidos.has(p.id) }));
+}
+
+export async function concederComposicion(atletaId, coachId) {
+  const { error } = await supabase
+    .from('composition_access')
+    .insert({ atleta_id: atletaId, coach_id: coachId });
+  if (error && error.code !== '23505') throw error;   // ya concedido: no es un error
+}
+
+export async function revocarComposicion(atletaId, coachId) {
+  const { error } = await supabase
+    .from('composition_access')
+    .delete()
+    .eq('atleta_id', atletaId)
+    .eq('coach_id', coachId);
+  if (error) throw error;
+}
+
+/** Atletas que me concedieron ver SU composición. Solo lectura. */
+export async function atletasQueMeCompartieron(miId) {
+  const filas = revisar(await supabase
+    .from('composition_access')
+    .select('atleta_id, profiles!composition_access_atleta_id_fkey(id, nombre, email)')
+    .eq('coach_id', miId)) || [];
+  return filas.map((f) => f.profiles).filter(Boolean)
+    .sort((a, b) => (a.nombre || a.email).localeCompare(b.nombre || b.email));
+}
+
+// ------------------------------------------------------------
+// Editar el plan
+//
+// Quién puede: el dueño, y su coach si tiene `puede_editar_plan`.
+// Eso NO da permiso sobre el registro de entrenamientos, que es otra
+// puerta (`puede_registrar`).
+// ------------------------------------------------------------
+
+/** Atletas cuyo plan puedo editar además del mío. */
+export async function atletasCuyoPlanPuedoEditar(miId) {
+  const filas = revisar(await supabase
+    .from('coach_links')
+    .select('atleta_id, profiles!coach_links_atleta_id_fkey(id, nombre, email)')
+    .eq('coach_id', miId)
+    .eq('puede_editar_plan', true)) || [];
+  return filas.map((f) => f.profiles).filter(Boolean)
+    .sort((a, b) => (a.nombre || a.email).localeCompare(b.nombre || b.email));
+}
+
+export async function crearRutina(userId, nombre) {
+  return revisar(await supabase
+    .from('routines')
+    .insert({ user_id: userId, nombre })
+    .select('id, nombre, vigente_desde')
+    .single());
+}
+
+export async function renombrarRutina(id, nombre) {
+  return revisar(await supabase
+    .from('routines').update({ nombre }).eq('id', id)
+    .select('id, nombre').single());
+}
+
+/**
+ * Cierra la rutina vigente y abre su sucesora copiando días,
+ * ejercicios y valores base. El historial NO se copia ni se toca: las
+ * sesiones viejas siguen colgando de la rutina vieja, que es lo que
+ * hace que "qué rutina hacía en abril" tenga respuesta.
+ */
+export async function sucederRutina(rutinaVieja, nombreNuevo) {
+  const { data, error } = await supabase.rpc('suceder_rutina', {
+    rutina_vieja: rutinaVieja, nombre_nuevo: nombreNuevo,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function crearDia(routineId, orden, nombre) {
+  return revisar(await supabase
+    .from('routine_days')
+    .insert({ routine_id: routineId, orden, nombre })
+    .select('id, orden, nombre').single());
+}
+
+export async function renombrarDia(id, nombre) {
+  return revisar(await supabase
+    .from('routine_days').update({ nombre }).eq('id', id)
+    .select('id, nombre').single());
+}
+
+/**
+ * Borra un día. Falla si ya tiene entrenamientos registrados, y esa
+ * negativa es deliberada: la clave foránea de workout_sessions no
+ * lleva `on delete cascade` para que borrar un día no se lleve por
+ * delante meses de historial sin avisar.
+ */
+export async function borrarDia(id) {
+  const { error } = await supabase.from('routine_days').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Catálogo: los ejercicios globales más los que creó esta persona. */
+export async function catalogoEjercicios(userId) {
+  const filas = revisar(await supabase
+    .from('exercises')
+    .select('id, nombre, grupo_muscular, unidad_def, es_global, user_id')
+    .or(`es_global.eq.true,user_id.eq.${userId}`)
+    .order('nombre')) || [];
+  return filas;
+}
+
+export async function crearEjercicio(userId, { nombre, grupo_muscular, unidad_def }) {
+  return revisar(await supabase
+    .from('exercises')
+    .insert({ user_id: userId, nombre, grupo_muscular: grupo_muscular || null,
+              unidad_def: unidad_def || 'kg', es_global: false })
+    .select('id, nombre, grupo_muscular, unidad_def, es_global, user_id')
+    .single());
+}
+
+export async function agregarEjercicioADia(routineDayId, exerciseId, orden, base = {}) {
+  return revisar(await supabase
+    .from('routine_exercises')
+    .insert({
+      routine_day_id: routineDayId,
+      exercise_id: exerciseId,
+      orden,
+      unidad: base.unidad || 'kg',
+      series_base: base.series_base ?? 3,
+      reps_base: base.reps_base ?? null,
+    })
+    .select('id').single());
+}
+
+export async function actualizarEjercicioDeRutina(id, campos) {
+  return revisar(await supabase
+    .from('routine_exercises').update(campos).eq('id', id)
+    .select('id').single());
+}
+
+/**
+ * Quitar un ejercicio del plan es un borrado LÓGICO (`activo = false`).
+ * La fila se conserva porque los set_logs registrados apuntan a ella;
+ * borrarla de verdad dejaría huérfano el historial.
+ */
+export async function quitarEjercicioDeDia(id) {
+  return revisar(await supabase
+    .from('routine_exercises').update({ activo: false }).eq('id', id)
+    .select('id').single());
+}
+
+/** Reordena en bloque: se manda el orden nuevo de cada fila. */
+export async function reordenarEjercicios(pares) {
+  for (const { id, orden } of pares) {
+    const { error } = await supabase.from('routine_exercises').update({ orden }).eq('id', id);
+    if (error) throw error;
+  }
+}

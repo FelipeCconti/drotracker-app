@@ -796,3 +796,327 @@
   .filtros > .campo-chico { flex: 1 1 100%; }
   .pr { gap: var(--esp-3); padding: var(--esp-3); }
 }
+
+/* ============================================================
+   COMPOSICIÓN CORPORAL
+   ============================================================ */
+
+.fila-altura {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--esp-3);
+  margin-top: var(--esp-3);
+}
+.fila-altura .boton { margin-top: 0; }
+
+/* ---- Formulario de medición ---- */
+
+.medicion-form {
+  margin-bottom: var(--esp-4);
+  padding: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+}
+
+.medicion-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-4);
+}
+.medicion-titulo {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.medicion-cabecera .volver { margin-bottom: 0; }
+
+/* Rejilla que se reacomoda sola: ocho campos en el computador,
+   dos por fila en el teléfono, sin declarar puntos de quiebre. */
+.medicion-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-3);
+}
+.medicion-campos .entrada--num { max-width: none; }
+.medicion-campos .entrada--fecha { width: 100%; }
+
+.campo--nota { margin-bottom: var(--esp-4); }
+.entrada--texto {
+  font-family: var(--fuente-texto);
+  font-size: var(--texto-md);
+  text-align: left;
+}
+
+.medicion-pie {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+}
+.medicion-pie .boton { margin-top: 0; }
+.medicion-pie .pie-nota { margin: 0; text-align: left; flex: 1 1 20rem; }
+
+/* ---- Métricas del último registro ---- */
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-3);
+}
+
+.metrica {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+  padding: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+}
+.metrica-etiqueta {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  letter-spacing: 0.02em;
+}
+.metrica-valor {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-fuerte);
+  line-height: var(--interlinea-apretada);
+  color: var(--color-texto);
+}
+.metrica-valor small {
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto-debil);
+  margin-left: 2px;
+}
+/* La variación se muestra en gris: subir de peso no es "malo" ni bajar
+   "bueno" — depende de qué esté buscando la persona, y la app no lo
+   sabe. Verde y rojo acá serían un juicio que no nos toca hacer. */
+.metrica-delta {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+
+.nota-imc { margin-bottom: var(--esp-5); max-width: 68ch; }
+
+.graficos-composicion {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-4);
+}
+.grafico-lienzo--medio { height: 230px; }
+
+/* ---- Historial ---- */
+
+.celda-nota {
+  text-align: left;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--fuente-texto);
+}
+.celda-acciones { white-space: nowrap; }
+
+.editado {
+  font-family: var(--fuente-texto);
+  font-size: var(--texto-xs);
+  font-style: italic;
+  color: var(--color-texto-debil);
+}
+
+.enlace {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 var(--esp-2);
+  font-family: var(--fuente-texto);
+  font-size: var(--texto-xs);
+  color: var(--color-acento);
+  text-decoration: underline;
+}
+.enlace:hover { color: var(--color-acento-fuerte); }
+.enlace--riesgo { color: var(--color-estancamiento); }
+.enlace--riesgo:hover { color: var(--color-estancamiento); text-decoration-thickness: 2px; }
+
+/* ---- Permisos ---- */
+
+.lista-permisos {
+  list-style: none;
+  margin: var(--esp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+}
+.permiso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-3);
+  padding: var(--esp-3);
+  background: var(--color-superficie-alta);
+  border-radius: var(--radio-sm);
+}
+.permiso-nombre { font-size: var(--texto-sm); color: var(--color-texto); }
+.interruptor {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  cursor: pointer;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+.interruptor input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-acento); cursor: pointer; }
+
+@media (max-width: 640px) {
+  .graficos-composicion { grid-template-columns: 1fr; }
+  .medicion-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .medicion-campos > .campo-chico:first-child { grid-column: 1 / -1; }
+}
+
+/* ============================================================
+   CONFIGURAR RUTINA
+   ============================================================ */
+
+.nueva-rutina {
+  display: flex;
+  gap: var(--esp-3);
+  align-items: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--esp-5);
+  text-align: left;
+}
+.nueva-rutina .boton { margin-top: 0; }
+
+.rutina-cabecera, .dia-cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--esp-4);
+}
+.dia-cabecera { margin-bottom: var(--esp-3); }
+
+.campo--titulo { flex: 1 1 18rem; }
+.campo--ancho  { flex: 1 1 14rem; }
+
+/* El nombre de la rutina se edita en sitio: parece un título hasta
+   que se toca, y ahí se comporta como el campo que siempre fue. */
+.entrada--titulo {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semi);
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+}
+.entrada--titulo:hover { border-color: var(--color-borde); }
+.entrada--titulo:focus { background: var(--color-fondo); border-color: var(--color-foco); }
+
+.rutina-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-debil);
+}
+.rutina-meta .volver { margin-bottom: 0; }
+
+.chip--sumar {
+  border-style: dashed;
+  color: var(--color-texto-debil);
+}
+.chip--sumar:hover { color: var(--color-texto); }
+
+.lista-plan { margin-bottom: var(--esp-4); }
+.ejercicio--plan .ejercicio-campos { max-width: 34rem; }
+
+.vacio--fino { padding: var(--esp-5) var(--esp-4); }
+
+.plan-acciones {
+  display: flex;
+  gap: var(--esp-1);
+  flex: 0 0 auto;
+}
+
+.icono {
+  appearance: none;
+  cursor: pointer;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-tenue);
+  background: var(--color-superficie-alta);
+  border: var(--borde-fino);
+  border-radius: var(--radio-sm);
+  transition: color var(--trans-rapida), border-color var(--trans-rapida);
+}
+.icono:hover:not(:disabled) { color: var(--color-texto); border-color: var(--color-acento); }
+.icono:disabled { opacity: 0.3; cursor: default; }
+.icono--riesgo:hover:not(:disabled) {
+  color: var(--color-estancamiento);
+  border-color: var(--color-estancamiento);
+}
+
+/* ---- Agregar ejercicio ---- */
+
+.agregar {
+  padding: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-left: 3px solid var(--color-acento-suave);
+  border-radius: var(--radio-md);
+}
+.agregar-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-3);
+  margin-bottom: var(--esp-3);
+}
+.agregar-cabecera .explicacion-titulo { margin: 0; }
+.agregar-cabecera .volver { margin-bottom: 0; }
+
+.agregar-fila {
+  display: flex;
+  gap: var(--esp-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.agregar-fila .boton { margin-top: 0; }
+
+.agregar-o {
+  margin: var(--esp-4) 0 var(--esp-3);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  text-transform: lowercase;
+}
+
+.agregar .explicacion-aviso {
+  margin: var(--esp-3) 0 0;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+
+@media (max-width: 640px) {
+  .rutina-cabecera, .dia-cabecera { gap: var(--esp-2); }
+  .campo--titulo, .campo--ancho { flex-basis: 100%; }
+  .agregar-fila .boton { width: 100%; }
+}

@@ -33,13 +33,15 @@
   import { protegerApp, cerrarSesion } from './app/auth.js';
   import { montarEntrenar } from './app/entrenar.js';
   import { montarProgreso } from './app/progreso.js';
+  import { montarComposicion } from './app/composicion.js';
+  import { montarRutina } from './app/rutina.js';
   import { esc } from './app/ui.js';
 
   const PANTALLAS = [
     { id: 'entrenar',    titulo: 'Entrenar',    montar: montarEntrenar },
     { id: 'progreso',    titulo: 'Progreso',    montar: montarProgreso },
-    { id: 'composicion', titulo: 'Composición', montar: null },
-    { id: 'rutina',      titulo: 'Rutina',      montar: null },
+    { id: 'composicion', titulo: 'Composición', montar: montarComposicion },
+    { id: 'rutina',      titulo: 'Rutina',      montar: montarRutina },
   ];
 
   function arrancar({ perfil }) {

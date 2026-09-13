@@ -143,7 +143,7 @@ select ws.fecha, e.nombre, sl.peso, sl.series, sl.reps,
 
 ## Recuperar un dato que alguien pisó
 
-El respaldo diario guarda 30 días. Ver `sql/RESTAURAR.md` — se restaura en el proyecto
+El respaldo diario guarda 30 días. Ver `RESTAURAR.md` — se restaura en el proyecto
 `drotracker-pruebas` y se consulta ahí, sin tocar producción.
 
 ## Después de cualquier cambio de permisos
@@ -152,5 +152,5 @@ El respaldo diario guarda 30 días. Ver `sql/RESTAURAR.md` — se restaura en el
 -- pegar sql/99_pruebas_rls.sql entero
 ```
 
-Las 34 pruebas tienen que decir OK. Crea y borra sus propios usuarios de prueba, así que
+Las 51 pruebas tienen que decir OK. Crea y borra sus propios usuarios de prueba, así que
 se puede correr en producción sin miedo. Al terminar: `drop table _pruebas_rls;`

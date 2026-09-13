@@ -170,6 +170,13 @@ termina con un `select` que comprueba que se aplicó.
 Numeración: `01`, `02` son la base; `03` en adelante, migraciones; `99_` en adelante,
 diagnósticos y pruebas que no cambian nada.
 
+**Un ejercicio del catálogo no se borra nunca desde la app** (migración 10). Las claves
+foráneas hacia `exercises` son `on delete cascade` —hacen falta para que borrar una
+cuenta funcione— y por eso mismo un `delete` sobre un ejercicio arrastraría en silencio
+todo su historial. La app quita ejercicios del plan con `routine_exercises.activo =
+false`, que conserva el registro; a `authenticated` se le retiró el privilegio de DELETE
+sobre `exercises` y no hay política que lo permita.
+
 **4. Probar local antes de publicar.** Desde la raíz del repo:
 
 ```
@@ -307,6 +314,39 @@ deshacer sin querer:
 - **Un guardado que falla no borra lo escrito.** La fila queda marcada y se reintenta
   sola cuando vuelve la red (`window.addEventListener('online', …)`). En un subterráneo
   con señal mala, perder lo tecleado es imperdonable.
+
+## Progreso y composición: decisiones de gráfico
+
+**Nunca dos ejes verticales.** Dos medidas de escala distinta van a dos gráficos, no a
+uno con doble eje. Kilos con kilos, por cientos con por cientos.
+
+**Máximo dos series por gráfico, y con los tokens `--grafico-serie-1` y `-2`.** Esos dos
+pasos están comprobados (separación visual con visión normal y con daltonismo, contraste
+sobre el fondo de las tarjetas); pasos vecinos de la rampa azul no pasan la prueba. Para
+comparar más de dos cosas se usan **gráficos pequeños uno al lado del otro**, no más
+colores: una rampa de un solo azul no puede cargar identidad de ocho categorías.
+
+**Barras desde cero; líneas con eje libre.** En una barra el dato es la longitud y una
+base recortada exagera diferencias pequeñas. En una línea el dato es la pendiente, y
+forzar el cero aplasta la curva justo donde interesa mirarla.
+
+**Nunca un número sobre cada punto.** En las líneas se etiquetan el máximo y el último;
+en las barras, cuando son pocas, todas.
+
+**Una serie sin datos no se dibuja.** Una balanza que no mide grasa visceral deja esa
+columna nula y esa serie desaparece, en vez de una línea de ceros que parece un desplome.
+
+**El horizonte por defecto** es 4 semanas en "Por día" y 12 en "Por ejercicio": la
+primera pregunta es el ciclo en curso, la segunda es la tendencia. Cuando las barras no
+caben, el contenedor se desliza; nunca se aprietan hasta ser ilegibles.
+
+**En composición, el color no juzga.** Las variaciones van en gris, no en verde y rojo:
+subir de peso no es "malo" ni bajar "bueno" — depende de qué busque la persona, y la app
+no lo sabe. El IMC se muestra como cifra y **nunca se traduce a una categoría**; lleva al
+lado la advertencia de que no distingue músculo de grasa.
+
+El interruptor con el que el atleta concede y revoca el acceso de cada coach a su
+composición vive **al final de la pantalla de Composición**, y solo lo ve el dueño.
 
 ## Las pruebas de RLS no cuentan filas de toda la base
 
