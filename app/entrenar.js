@@ -20,7 +20,7 @@
 // ============================================================
 
 import {
-  atletasQuePuedoRegistrar, rutinaVigente, diasDeRutina, ciclosDeRutina,
+  rutinaVigente, diasDeRutina, ciclosDeRutina,
   ejerciciosDelDia, ultimoRegistroPorEjercicio, ultimaSesion, buscarSesion,
   crearSesion, actualizarSesion, registrosDeSesion, guardarRegistro,
   borrarRegistro, asegurarCiclo,
@@ -30,6 +30,11 @@ import {
   esc, retrasar, crearCola, fmtNum, aNumero, hoyISO, haceCuanto,
   fmtFechaLarga, avisar, mensajeDeError,
 } from './ui.js';
+
+// Se importa con otro nombre porque en este archivo `sesion` ya significa
+// una fila de workout_sessions, y dos cosas distintas con el mismo
+// nombre en un archivo es como se escriben los errores difíciles.
+import { sesion as appSesion, esPropio, permiso, sinPermisoHTML } from './sesion.js';
 
 // ------------------------------------------------------------
 // Estado de la pantalla
@@ -58,17 +63,12 @@ let raiz = null;
 // ============================================================
 export async function montarEntrenar(contenedor, perfil) {
   raiz = contenedor;
-  S.yo = perfil;
-  S.atleta = perfil;
+  S.yo = appSesion.yo;
+  S.atleta = appSesion.sujeto;   // quién es se elige en la cabecera, una sola vez
+
+  if (!permiso('registrar')) { raiz.innerHTML = sinPermisoHTML('registrar'); return; }
 
   pintarCargando();
-
-  try {
-    S.atletas = await atletasQuePuedoRegistrar(perfil.id);
-  } catch {
-    S.atletas = [];   // no ser coach no es un error
-  }
-
   await cargarAtleta();
 }
 
@@ -253,9 +253,8 @@ function pintarError(e) {
 }
 
 function pintarSinRutina() {
-  const esOtro = S.atleta.id !== S.yo.id;
+  const esOtro = !esPropio();
   raiz.innerHTML = `
-    ${selectorAtletaHTML()}
     <div class="vacio">
       <h2 class="vacio-titulo">Todavía no hay una rutina</h2>
       <p class="vacio-texto">
@@ -264,13 +263,10 @@ function pintarSinRutina() {
           : 'Arma tu rutina —qué días entrenas y qué ejercicios hace cada día— y esta pantalla se llena sola.'}
       </p>
     </div>`;
-  conectarSelectorAtleta();
 }
 
 function pintar() {
   raiz.innerHTML = `
-    ${selectorAtletaHTML()}
-
     <div class="barra-dias" role="tablist" aria-label="Días de la rutina">
       ${S.dias.map((d) => `
         <button class="chip ${d.id === S.dia?.id ? 'chip--activo' : ''}"
@@ -308,7 +304,6 @@ function pintar() {
     ${S.filas.length ? `<p class="pie-nota">Se guarda solo, a medida que escribes.</p>` : ''}
   `;
 
-  conectarSelectorAtleta();
   conectarDias();
   conectarContexto();
   S.filas.forEach(conectarFila);
@@ -376,33 +371,6 @@ function marcarFila(fila, estado, detalle) {
 // ------------------------------------------------------------
 // Conexiones
 // ------------------------------------------------------------
-
-function selectorAtletaHTML() {
-  if (!S.atletas.length) return '';
-  const opciones = [S.yo, ...S.atletas]
-    .map((p) => `<option value="${esc(p.id)}" ${p.id === S.atleta.id ? 'selected' : ''}>
-        ${esc(p.id === S.yo.id ? 'Yo' : (p.nombre || p.email))}
-      </option>`).join('');
-  return `
-    <div class="selector-atleta">
-      <label class="campo-chico">
-        <span class="campo-etiqueta">Registrando para</span>
-        <select id="atleta" class="entrada entrada--select">${opciones}</select>
-      </label>
-      ${S.atleta.id !== S.yo.id
-        ? `<span class="marca-coach">Estás registrando como coach</span>` : ''}
-    </div>`;
-}
-
-function conectarSelectorAtleta() {
-  const sel = raiz.querySelector('#atleta');
-  if (!sel) return;
-  sel.addEventListener('change', async () => {
-    const id = sel.value;
-    S.atleta = id === S.yo.id ? S.yo : S.atletas.find((a) => a.id === id);
-    await cargarAtleta();
-  });
-}
 
 function conectarDias() {
   raiz.querySelectorAll('[data-dia]').forEach((b) => {

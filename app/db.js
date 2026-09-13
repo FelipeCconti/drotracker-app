@@ -495,3 +495,41 @@ export async function reordenarEjercicios(pares) {
     if (error) throw error;
   }
 }
+
+// ------------------------------------------------------------
+// Mis atletas, con todo lo que puedo hacer con cada uno
+//
+// Una sola consulta para todas las pantallas. Antes cada una pedía su
+// propia lista con su propio filtro, y el resultado era que un coach
+// tenía que volver a elegir a la persona en cada pestaña — y peor, que
+// la lista cambiaba de una pestaña a otra sin explicación.
+//
+// Acá la lista es una sola: TODOS mis atletas. Lo que cambia por
+// pestaña son los permisos, y van en la misma fila para que cada
+// pantalla pueda decir "a esta persona puedes verla pero no
+// registrarle" en vez de esconderla.
+// ------------------------------------------------------------
+export async function misAtletas(miId) {
+  const [vinculos, composicion] = await Promise.all([
+    supabase.from('coach_links')
+      .select('atleta_id, puede_editar_plan, puede_registrar, profiles!coach_links_atleta_id_fkey(id, nombre, email)')
+      .eq('coach_id', miId),
+    supabase.from('composition_access').select('atleta_id').eq('coach_id', miId),
+  ]);
+  if (vinculos.error) throw vinculos.error;
+  if (composicion.error) throw composicion.error;
+
+  const conComposicion = new Set((composicion.data || []).map((c) => c.atleta_id));
+
+  return (vinculos.data || [])
+    .filter((v) => v.profiles)
+    .map((v) => ({
+      id: v.profiles.id,
+      nombre: v.profiles.nombre,
+      email: v.profiles.email,
+      puedeEditarPlan: v.puede_editar_plan,
+      puedeRegistrar: v.puede_registrar,
+      veComposicion: conComposicion.has(v.atleta_id),
+    }))
+    .sort((a, b) => (a.nombre || a.email).localeCompare(b.nombre || b.email));
+}

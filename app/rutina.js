@@ -25,13 +25,14 @@
 // ============================================================
 
 import {
-  atletasCuyoPlanPuedoEditar, rutinaVigente, diasDeRutina, ejerciciosDelDia,
+  rutinaVigente, diasDeRutina, ejerciciosDelDia,
   crearRutina, renombrarRutina, sucederRutina, crearDia, renombrarDia, borrarDia,
   catalogoEjercicios, crearEjercicio, agregarEjercicioADia,
   actualizarEjercicioDeRutina, quitarEjercicioDeDia, reordenarEjercicios,
 } from './db.js';
 
 import { esc, aNumero, fmtNum, retrasar, avisar, mensajeDeError, fmtFechaLarga } from './ui.js';
+import { sesion, esPropio, permiso, sinPermisoHTML } from './sesion.js';
 
 const S = {
   yo: null,
@@ -46,19 +47,21 @@ const S = {
 };
 
 let raiz = null;
-const esPropia = () => S.atleta?.id === S.yo?.id;
+const esPropia = () => esPropio();
 
 // ============================================================
 // Entrada
 // ============================================================
-export async function montarRutina(contenedor, perfil) {
+export async function montarRutina(contenedor) {
   raiz = contenedor;
-  S.yo = perfil;
-  S.atleta = S.atleta || perfil;
-  raiz.innerHTML = `<div class="cargando">Cargando…</div>`;
+  S.yo = sesion.yo;
+  S.atleta = sesion.sujeto;   // quién es se elige en la cabecera
 
+  if (!permiso('plan')) { raiz.innerHTML = sinPermisoHTML('plan'); return; }
+
+  S.diaId = null;
+  raiz.innerHTML = `<div class="cargando">Cargando…</div>`;
   try {
-    S.atletas = await atletasCuyoPlanPuedoEditar(perfil.id).catch(() => []);
     await cargar();
   } catch (e) {
     pintarError(e);
@@ -93,7 +96,6 @@ function pintarError(e) {
 // ============================================================
 function pintarSinRutina() {
   raiz.innerHTML = `
-    ${selectorAtletaHTML()}
     <div class="vacio">
       <h2 class="vacio-titulo">${esPropia() ? 'Arma tu rutina' : `${esc(S.atleta.nombre || S.atleta.email)} todavía no tiene rutina`}</h2>
       <p class="vacio-texto">
@@ -114,7 +116,6 @@ function pintarSinRutina() {
       </form>
     </div>`;
 
-  conectarSelectorAtleta();
   raiz.querySelector('#form-rutina')?.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const nombre = raiz.querySelector('#nombre-rutina').value.trim();
@@ -137,8 +138,6 @@ function pintar() {
   const dia = S.dias.find((d) => d.id === S.diaId);
 
   raiz.innerHTML = `
-    ${selectorAtletaHTML()}
-
     <div class="rutina-cabecera">
       <label class="campo campo--titulo">
         <span class="campo-etiqueta">Rutina vigente</span>
@@ -281,27 +280,11 @@ function nombreCorto(nombre) {
   return String(nombre).replace(/^d[ií]a\s*\d+\s*[–-]\s*/i, '');
 }
 
-function selectorAtletaHTML() {
-  if (!S.atletas.length) return '';
-  const opciones = [S.yo, ...S.atletas]
-    .map((p) => `<option value="${esc(p.id)}" ${p.id === S.atleta.id ? 'selected' : ''}>
-      ${esc(p.id === S.yo.id ? 'Yo' : (p.nombre || p.email))}</option>`).join('');
-  return `
-    <div class="selector-atleta">
-      <label class="campo-chico">
-        <span class="campo-etiqueta">Editando el plan de</span>
-        <select id="sel-atleta" class="entrada entrada--select">${opciones}</select>
-      </label>
-      ${!esPropia() ? '<span class="marca-coach">Estás editando como coach</span>' : ''}
-    </div>`;
-}
-
 // ============================================================
 // Conexiones
 // ============================================================
 function conectar() {
   const q = (s) => raiz.querySelector(s);
-  conectarSelectorAtleta();
 
   // --- nombre de la rutina y del día: autoguardado ---
   const guardarNombreRutina = retrasar(async (v) => {
@@ -433,17 +416,6 @@ function conectar() {
       S.catalogo.push(nuevo);
       await sumarAlDia(nuevo.id, nuevo.unidad_def);
     } catch (e) { avisar(mensajeDeError(e), 'error'); }
-  });
-}
-
-function conectarSelectorAtleta() {
-  raiz.querySelector('#sel-atleta')?.addEventListener('change', async (ev) => {
-    const id = ev.target.value;
-    S.atleta = id === S.yo.id ? S.yo : S.atletas.find((a) => a.id === id);
-    S.diaId = null;
-    S.agregando = false;
-    raiz.innerHTML = `<div class="cargando">Cargando…</div>`;
-    await cargar();
   });
 }
 

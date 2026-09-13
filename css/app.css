@@ -28,15 +28,68 @@
   border-bottom: var(--borde-fino);
 }
 
+/* El logo es un botón: siempre vuelve al inicio. Que lo parezca es
+   parte del trato — un logo que no se puede pinchar deja a la gente
+   sin salida cuando se pierde. */
 .app-marca {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: var(--esp-1) var(--esp-2);
+  margin-left: calc(var(--esp-2) * -1);
+  border-radius: var(--radio-sm);
   font-family: var(--fuente-titulo);
   font-weight: var(--peso-fuerte);
   font-size: var(--texto-lg);
   letter-spacing: 0.02em;
   color: var(--color-acento-fuerte);
-  margin: 0;
+  white-space: nowrap;
+  transition: background var(--trans-rapida);
+}
+.app-marca:hover { background: var(--color-superficie-alta); }
+
+/* ---- Quién entró y con qué rol ---- */
+.identidad {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.identidad-nombre {
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
+.identidad-rol {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  letter-spacing: 0.03em;
+}
+
+/* ---- A quién está mirando (solo coaches) ---- */
+.sujeto { display: flex; align-items: center; gap: var(--esp-2); }
+.sujeto-etiqueta {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  white-space: nowrap;
+}
+.entrada--sujeto { background: var(--color-superficie-alta); }
+
+/* Franja permanente mientras se trabaja con datos ajenos. Registrar por
+   error en la cuenta de otro es un daño que nadie descubre hasta
+   semanas después: vale la pena la barra fea. */
+.aviso-sujeto {
+  padding: var(--esp-2) var(--esp-4);
+  text-align: center;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+}
+.aviso-sujeto .enlace { color: var(--color-texto-sobre-acento); font-weight: var(--peso-semi); }
 
 .app-nav {
   display: flex;
@@ -270,6 +323,16 @@
   width: auto;
 }
 .entrada--num { max-width: 6rem; }
+
+/* Va después de .entrada--select a propósito: con la misma
+   especificidad gana la última, y este selector tiene que quedar
+   discreto dentro de la cabecera, no competir con ella. */
+.entrada--sujeto {
+  padding: var(--esp-1) var(--esp-2);
+  font-size: var(--texto-sm);
+  background: var(--color-superficie-alta);
+  max-width: 11rem;
+}
 
 /* ---- Lista de ejercicios ---- */
 
@@ -1119,4 +1182,167 @@
   .rutina-cabecera, .dia-cabecera { gap: var(--esp-2); }
   .campo--titulo, .campo--ancho { flex-basis: 100%; }
   .agregar-fila .boton { width: 100%; }
+}
+
+/* ============================================================
+   INICIO
+   ============================================================ */
+
+.inicio { padding-block: var(--esp-5); }
+
+.inicio-saludo {
+  margin: 0 0 var(--esp-2);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-2xl);
+  font-weight: var(--peso-fuerte);
+  line-height: var(--interlinea-apretada);
+  color: var(--color-texto);
+}
+.inicio-bajada {
+  margin: 0 0 var(--esp-6);
+  font-size: var(--texto-lg);
+  color: var(--color-texto-tenue);
+}
+.inicio-bajada strong { color: var(--color-texto); }
+
+.destinos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--esp-3);
+}
+
+.destino {
+  appearance: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  text-align: left;
+  padding: var(--esp-5);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-lg);
+  color: inherit;
+  font: inherit;
+  transition: border-color var(--trans-rapida), background var(--trans-rapida), transform var(--trans-rapida);
+}
+.destino:hover {
+  border-color: var(--color-acento);
+  background: var(--color-superficie-alta);
+  transform: translateY(-1px);
+}
+.destino:focus-visible { outline: 2px solid var(--color-foco); outline-offset: 3px; }
+
+/* El quinto ocupa la fila entera: es de otra naturaleza que los cuatro
+   destinos de trabajo, y la forma lo dice sin tener que explicarlo. */
+.destino--ancho {
+  grid-column: 1 / -1;
+  padding: var(--esp-4) var(--esp-5);
+  background: transparent;
+  border-style: dashed;
+}
+
+.destino-icono {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  border-radius: var(--radio-md);
+}
+.destino-icono svg { width: 1.6rem; height: 1.6rem; }
+.destino--ancho .destino-icono {
+  width: 2.25rem; height: 2.25rem;
+  color: var(--color-acento-fuerte);
+  background: var(--color-superficie-alta);
+}
+.destino--ancho .destino-icono svg { width: 1.25rem; height: 1.25rem; }
+
+.destino-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.destino-titulo {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semi);
+  letter-spacing: 0.01em;
+  color: var(--color-texto);
+}
+.destino--ancho .destino-titulo { font-size: var(--texto-md); }
+.destino-sub {
+  font-size: var(--texto-sm);
+  color: var(--color-texto-debil);
+  line-height: var(--interlinea-normal);
+}
+
+/* ============================================================
+   CÓMO SE USA
+   ============================================================ */
+
+.guia { max-width: 68ch; padding-block: var(--esp-4); }
+
+.guia-titulo {
+  margin: 0 0 var(--esp-5);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-fuerte);
+  color: var(--color-texto);
+}
+
+.guia-seccion {
+  margin-bottom: var(--esp-5);
+  padding-bottom: var(--esp-5);
+  border-bottom: 1px solid var(--color-borde-tenue);
+}
+.guia-seccion:last-of-type { border-bottom: none; }
+
+.guia-seccion h2 {
+  margin: 0 0 var(--esp-3);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.guia-seccion p {
+  margin: 0 0 var(--esp-3);
+  line-height: var(--interlinea-normal);
+  color: var(--color-texto-tenue);
+}
+.guia-seccion p:last-child { margin-bottom: 0; }
+.guia-seccion strong { color: var(--color-texto); }
+
+.guia-seccion--destacada {
+  padding: var(--esp-5);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-left: 3px solid var(--color-acento);
+  border-radius: var(--radio-md);
+}
+
+.guia-lista {
+  margin: 0;
+  padding-left: var(--esp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  color: var(--color-texto-tenue);
+  line-height: var(--interlinea-normal);
+}
+
+@media (max-width: 640px) {
+  .destinos { grid-template-columns: 1fr; }
+  .inicio-saludo { font-size: var(--texto-xl); }
+  .inicio-bajada { font-size: var(--texto-md); margin-bottom: var(--esp-5); }
+  .destino { padding: var(--esp-4); gap: var(--esp-3); }
+  /* Tres filas en el teléfono: identidad, a quién miro, y la
+     navegación. El orden se declara entero — dejar un elemento sin
+     `order` lo manda al principio del grupo 0 y termina en medio de
+     algo, que es exactamente lo que pasaba con "Salir". */
+  .app-cabecera { flex-wrap: wrap; gap: var(--esp-2); }
+  .app-marca  { order: 0; }
+  .identidad  { order: 1; flex: 1 1 auto; }
+  .app-salir  { order: 2; }
+  .sujeto     { order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .sujeto .entrada--sujeto { flex: 1 1 auto; max-width: none; }
+  .app-nav    { order: 4; flex-basis: 100%; margin-left: 0; }
 }

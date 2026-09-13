@@ -23,10 +23,10 @@
 import {
   perfilCompleto, guardarAltura, mediciones, crearMedicion, actualizarMedicion,
   borrarMedicion, misCoachesYAcceso, concederComposicion, revocarComposicion,
-  atletasQueMeCompartieron,
 } from './db.js';
 
 import { esc, fmtNum, aNumero, mensajeDeError, avisar } from './ui.js';
+import { sesion, esPropio as sujetoEsMio, permiso, sinPermisoHTML, refrescarAtletas } from './sesion.js';
 
 const Chart = window.Chart;
 
@@ -63,21 +63,22 @@ const S = {
 };
 
 let raiz = null;
-const esPropia = () => S.viendo?.id === S.yo?.id;
+const esPropia = () => sujetoEsMio();
 
 function token(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 
 // ============================================================
 // Entrada
 // ============================================================
-export async function montarComposicion(contenedor, perfil) {
+export async function montarComposicion(contenedor) {
   raiz = contenedor;
-  S.yo = perfil;
-  S.viendo = S.viendo || perfil;
-  raiz.innerHTML = `<div class="cargando">Cargando…</div>`;
+  S.yo = sesion.yo;
+  S.viendo = sesion.sujeto;   // quién es se elige en la cabecera
 
+  if (!permiso('composicion')) { raiz.innerHTML = sinPermisoHTML('composicion'); return; }
+
+  raiz.innerHTML = `<div class="cargando">Cargando…</div>`;
   try {
-    S.compartidas = await atletasQueMeCompartieron(perfil.id).catch(() => []);
     await cargar();
   } catch (e) {
     raiz.innerHTML = `<div class="vacio">
@@ -110,7 +111,6 @@ function pintar() {
   const ultima = S.filas.at(-1);
 
   raiz.innerHTML = `
-    ${selectorPersonaHTML()}
     ${esPropia() ? bloqueAlturaHTML() : ''}
     ${esPropia() ? formularioHTML() : `<p class="nota-vista">
         Estás viendo la composición de ${esc(S.viendo.nombre || S.viendo.email)}, que te dio acceso.
@@ -125,21 +125,6 @@ function pintar() {
 
   conectar();
   if (S.filas.length) dibujarTodos();
-}
-
-function selectorPersonaHTML() {
-  if (!S.compartidas.length) return '';
-  const opciones = [S.yo, ...S.compartidas]
-    .map((p) => `<option value="${esc(p.id)}" ${p.id === S.viendo.id ? 'selected' : ''}>
-      ${esc(p.id === S.yo.id ? 'Yo' : (p.nombre || p.email))}</option>`).join('');
-  return `
-    <div class="selector-atleta">
-      <label class="campo-chico">
-        <span class="campo-etiqueta">Viendo la composición de</span>
-        <select id="sel-persona" class="entrada entrada--select">${opciones}</select>
-      </label>
-      ${!esPropia() ? '<span class="marca-coach">solo lectura</span>' : ''}
-    </div>`;
 }
 
 /** El IMC necesita la altura, y la altura vive en el perfil. */
@@ -314,14 +299,6 @@ function compartirHTML() {
 function conectar() {
   const q = (sel) => raiz.querySelector(sel);
 
-  q('#sel-persona')?.addEventListener('change', async (ev) => {
-    const id = ev.target.value;
-    S.viendo = id === S.yo.id ? S.yo : S.compartidas.find((a) => a.id === id);
-    S.editando = null;
-    raiz.innerHTML = `<div class="cargando">Cargando…</div>`;
-    await cargar();
-  });
-
   q('#guardar-altura')?.addEventListener('click', async () => {
     const cm = aNumero(q('#altura').value);
     if (!cm || cm < 100 || cm > 250) return avisar('Una altura en centímetros, entre 100 y 250.', 'error');
@@ -358,6 +335,7 @@ function conectar() {
       if (chk.checked) await concederComposicion(S.yo.id, coachId);
       else await revocarComposicion(S.yo.id, coachId);
       S.coaches = await misCoachesYAcceso(S.yo.id);
+      await refrescarAtletas();   // el cambio se nota al instante en la cabecera
       pintar();
       avisar(chk.checked ? 'Acceso concedido.' : 'Acceso revocado.');
     } catch (e) {

@@ -29,8 +29,15 @@
   //
   // Una pantalla por módulo en app/. Agregar una es agregar un
   // archivo y una línea en PANTALLAS: sin bundler, sin monolito.
+  //
+  // La cabecera lleva tres cosas que valen para todas las pantallas:
+  // quién entró y con qué rol, a quién está mirando (si es coach), y
+  // el logo, que siempre vuelve al inicio.
   // ==========================================================
   import { protegerApp, cerrarSesion } from './app/auth.js';
+  import { iniciarSesionApp, sesion, cambiarSujeto, esPropio } from './app/sesion.js';
+  import { montarInicio } from './app/inicio.js';
+  import { montarInstrucciones } from './app/instrucciones.js';
   import { montarEntrenar } from './app/entrenar.js';
   import { montarProgreso } from './app/progreso.js';
   import { montarComposicion } from './app/composicion.js';
@@ -38,50 +45,101 @@
   import { esc } from './app/ui.js';
 
   const PANTALLAS = [
-    { id: 'entrenar',    titulo: 'Entrenar',    montar: montarEntrenar },
-    { id: 'progreso',    titulo: 'Progreso',    montar: montarProgreso },
-    { id: 'composicion', titulo: 'Composición', montar: montarComposicion },
-    { id: 'rutina',      titulo: 'Rutina',      montar: montarRutina },
+    { id: 'inicio',        titulo: 'Inicio',      montar: montarInicio,        oculta: true },
+    { id: 'entrenar',      titulo: 'Entrenar',    montar: montarEntrenar },
+    { id: 'progreso',      titulo: 'Progreso',    montar: montarProgreso },
+    { id: 'composicion',   titulo: 'Composición', montar: montarComposicion },
+    { id: 'rutina',        titulo: 'Rutina',      montar: montarRutina },
+    { id: 'instrucciones', titulo: 'Cómo se usa', montar: montarInstrucciones, oculta: true },
   ];
 
-  function arrancar({ perfil }) {
+  const ROLES = { atleta: 'Atleta', coach: 'Coach', admin: 'Administrador' };
+
+  async function arrancar({ perfil }) {
+    await iniciarSesionApp(perfil);
+    let actual = 'inicio';
+
     document.getElementById('app').innerHTML = `
       <div class="app-marco">
         <header class="app-cabecera">
-          <h1 class="app-marca">DRO.TRACKER</h1>
+          <button class="app-marca" type="button" id="ir-inicio" title="Volver al inicio">DRO.TRACKER</button>
+
+          <div class="identidad">
+            <span class="identidad-nombre">${esc(perfil.nombre || perfil.email)}</span>
+            <span class="identidad-rol">${esc(ROLES[perfil.rol] || perfil.rol)}</span>
+          </div>
+
+          ${sesion.atletas.length ? `
+            <label class="sujeto">
+              <span class="sujeto-etiqueta">Viendo a</span>
+              <select id="sel-sujeto" class="entrada entrada--select entrada--sujeto">
+                <option value="${esc(perfil.id)}">Yo</option>
+                ${sesion.atletas.map((a) => `
+                  <option value="${esc(a.id)}">${esc(a.nombre || a.email)}</option>`).join('')}
+              </select>
+            </label>` : ''}
+
           <nav class="app-nav">
-            ${PANTALLAS.map((p) => `
-              <button class="app-nav-item" data-pantalla="${p.id}"
-                      ${p.montar ? '' : 'disabled title="Todavía no está montada"'}>
-                ${esc(p.titulo)}
-              </button>`).join('')}
+            ${PANTALLAS.filter((p) => !p.oculta).map((p) => `
+              <button class="app-nav-item" data-pantalla="${p.id}">${esc(p.titulo)}</button>`).join('')}
           </nav>
           <button class="app-salir" id="salir" type="button">Salir</button>
         </header>
+
+        <div class="aviso-sujeto" id="aviso-sujeto" hidden></div>
         <main class="app-cuerpo" id="cuerpo"></main>
       </div>`;
 
     const cuerpo = document.getElementById('cuerpo');
-    document.getElementById('salir').addEventListener('click', cerrarSesion);
+    const aviso  = document.getElementById('aviso-sujeto');
 
     function ir(id) {
       const p = PANTALLAS.find((x) => x.id === id);
       if (!p?.montar) return;
+      actual = id;
+
       document.querySelectorAll('[data-pantalla]').forEach((b) => {
         b.classList.toggle('app-nav-item--activo', b.dataset.pantalla === id);
       });
-      // El hash mantiene la pantalla al recargar y hace que el botón
-      // "atrás" del teléfono haga lo esperable.
       if (location.hash.slice(1) !== id) history.replaceState(null, '', `#${id}`);
-      p.montar(cuerpo, perfil);
+
+      // La franja de "estás viendo a X" acompaña a todas las pantallas:
+      // registrar por error en la cuenta de otro es un daño silencioso,
+      // del que nadie se entera hasta semanas después.
+      aviso.hidden = esPropio();
+      aviso.innerHTML = esPropio() ? '' :
+        `Estás viendo los datos de <strong>${esc(sesion.sujeto.nombre || sesion.sujeto.email)}</strong>,
+         no los tuyos. <button type="button" class="enlace" id="volver-a-mi">Volver a lo mío</button>`;
+      document.getElementById('volver-a-mi')?.addEventListener('click', () => {
+        const sel = document.getElementById('sel-sujeto');
+        if (sel) sel.value = sesion.yo.id;
+        cambiarSujeto(sesion.yo.id);
+        ir(actual);
+      });
+
+      p.montar(cuerpo, perfil, ir);
     }
 
+    document.getElementById('salir').addEventListener('click', cerrarSesion);
+    document.getElementById('ir-inicio').addEventListener('click', () => ir('inicio'));
     document.querySelectorAll('[data-pantalla]').forEach((b) => {
       b.addEventListener('click', () => ir(b.dataset.pantalla));
     });
 
-    const inicial = PANTALLAS.find((p) => p.id === location.hash.slice(1) && p.montar);
-    ir(inicial ? inicial.id : 'entrenar');
+    // Cambiar de persona vuelve a montar la pantalla actual: la elección
+    // se hace UNA VEZ y viaja con quien navega.
+    document.getElementById('sel-sujeto')?.addEventListener('change', (ev) => {
+      cambiarSujeto(ev.target.value);
+      ir(actual);
+    });
+
+    window.addEventListener('hashchange', () => {
+      const id = location.hash.slice(1);
+      if (id && id !== actual && PANTALLAS.some((p) => p.id === id)) ir(id);
+    });
+
+    const inicial = PANTALLAS.find((p) => p.id === location.hash.slice(1));
+    ir(inicial ? inicial.id : 'inicio');
   }
 
   protegerApp({ alEntrar: arrancar });

@@ -33,6 +33,7 @@
 
 import { historial, rutinaVigente, diasDeRutina, ejerciciosDelDia } from './db.js';
 import { esc, fmtNum, fmtFechaLarga, mensajeDeError } from './ui.js';
+import { sesion } from './sesion.js';
 
 const Chart = window.Chart;
 
@@ -90,9 +91,13 @@ function conAlfa(hex, alfa) {
 // ============================================================
 // Entrada
 // ============================================================
-export async function montarProgreso(contenedor, perfil) {
+export async function montarProgreso(contenedor) {
   raiz = contenedor;
+  // Quién es se elige en la cabecera. Progreso es lectura, y leer el
+  // entrenamiento de un atleta asignado no necesita permiso aparte.
+  const perfil = sesion.sujeto;
   S.perfil = perfil;
+  S.expandido = null;
   raiz.innerHTML = `<div class="cargando">Cargando tu historial…</div>`;
 
   try {
