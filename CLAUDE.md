@@ -97,15 +97,26 @@ ajenos, nunca de escritura.
 | Rol | Qué puede hacer de más |
 |---|---|
 | `atleta` | nada; gestiona lo suyo |
-| `coach` | lee el entrenamiento de los atletas que el admin le asignó |
-| `admin` | asigna y quita el rol de coach, crea vínculos coach–atleta, lee todo el entrenamiento |
+| `coach` | lee el entrenamiento de los atletas que el admin le asignó, y lo escribe si el atleta se lo permite |
+| `admin` | asigna y quita el rol de coach, crea y borra vínculos coach–atleta, concede y revoca permisos sobre esos vínculos (mesa de ayuda), lee todo el entrenamiento |
 
 Tres líneas que no se cruzan:
 
-1. **El plan lo puede escribir el coach; el registro nunca.** Un coach con
-   `puede_editar_plan` arma y ajusta la rutina de su atleta (`routines`, `routine_days`,
-   `routine_exercises`, `cycles`, `exercise_targets`). Lo que alguien efectivamente
-   levantó (`workout_sessions`, `set_logs`) solo lo escribe esa persona. Ni el admin.
+1. **Lo que el coach puede tocar lo decide el atleta, vínculo por vínculo.**
+   `coach_links` tiene dos interruptores independientes, y el segundo nace apagado:
+   - `puede_editar_plan` → armar y ajustar la rutina (`routines`, `routine_days`,
+     `routine_exercises`, `cycles`, `exercise_targets`).
+   - `puede_registrar` → escribir lo que efectivamente se levantó
+     (`workout_sessions`, `set_logs`), porque en el gimnasio muchas veces es el coach
+     quien tiene el teléfono en la mano.
+
+   Los enciende y apaga **el atleta** sobre su propio vínculo; el coach no puede
+   encendérselos. El admin también puede moverlos, a propósito: es la mesa de ayuda.
+   El **admin no escribe datos ajenos** por el hecho de ser admin — para eso tendría
+   que asignarse como coach y que el atleta se lo permita.
+
+   Toda fila de `workout_sessions` y `set_logs` queda sellada con `registrado_por`
+   (null = migrada de la planilla), así siempre se sabe quién escribió qué.
 2. **La composición corporal no se abre por rol.** El permiso vive en
    `composition_access`, una tabla que **solo el atleta** escribe: el admin no puede
    concederlo y el coach no puede concedérselo. El admin tampoco la ve por ser admin.
@@ -299,12 +310,14 @@ Decisiones de la conversión, por si hay que revisarlas:
 - **Los pesos son lo levantado, no lo planificado.** Entran como `workout_sessions` +
   `set_logs`, no como `exercise_targets`. La tabla de prescripción queda vacía hasta que
   se planifique un ciclo nuevo.
-- **Las repeticiones no estaban registradas y quedan en `NULL`.** NULL dice "no se sabe";
-  un cero diría "no hizo ninguna", que es falso. Consecuencia a tener presente: el **1RM
-  estimado no se puede calcular** para los datos migrados, porque la fórmula de Epley
-  necesita las reps. La vista devuelve NULL ahí, y los gráficos deben omitir esos puntos
-  en vez de dibujar un cero. Desde el primer entrenamiento registrado en la app sí habrá
-  reps y el 1RM empieza a funcionar.
+- **Las repeticiones no venían en la planilla y las rellena `sql/07_reps.sql`.** La
+  planilla no tenía columna de reps, pero el esquema del ciclo sí se cumplió y Felipe
+  lo confirma: semana 1 → 12, semana 2 → 10, semana 3 → 8, semana 4 → 6. Son datos
+  reales, no estimados; lo que faltaba era dónde anotarlos. Con eso, volumen y 1RM
+  estimado funcionan también sobre el histórico migrado.
+
+  La 07 solo toca filas con `reps is null` y fecha **hasta el 11-09-2026**: lo que se
+  registre en la app entra con sus propias reps y no se estima nunca.
 - **"x3" se guarda como `series = 3` en una sola fila.**
 - **Las fechas están reconstruidas**: exactas a la semana, aproximadas al día. Cada sesión
   importada lo dice en su `nota`, y esa nota es también la que usa el script para poder
