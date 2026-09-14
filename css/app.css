@@ -1436,3 +1436,14 @@
   .paso { gap: var(--esp-3); }
   .guia-pie .boton { flex: 1 1 100%; text-align: center; }
 }
+
+/* El punto del récord en la leyenda: mismo tratamiento que en el
+   gráfico — verde de SIGNIFICADO (no decorativo) y anillo del color de
+   la tarjeta, que es lo que lo despega de la línea. */
+.leyenda-punto-pr {
+  width: 11px;
+  height: 11px;
+  border-radius: var(--radio-full);
+  background: var(--color-progreso);
+  box-shadow: 0 0 0 2px var(--color-superficie), 0 0 0 3px var(--color-progreso-tenue);
+}

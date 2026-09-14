@@ -78,6 +78,10 @@ function paleta() {
     marca:   token('--grafico-marca'),
     texto:   token('--color-texto-tenue'),
     debil:   token('--color-texto-debil'),
+    // Verde reservado para SIGNIFICADO, y un récord es exactamente eso:
+    // el token lo dice literalmente — "avance, PR, mejora".
+    progreso: token('--color-progreso'),
+    fondo:    token('--color-superficie'),
   };
 }
 
@@ -487,6 +491,7 @@ function pintarPorEjercicio() {
       <div class="leyenda">
         <span class="leyenda-item"><i class="leyenda-marca" style="background:${p.serie1}"></i>Peso levantado</span>
         <span class="leyenda-item"><i class="leyenda-marca leyenda-marca--guion"></i>1RM estimado</span>
+        <span class="leyenda-item"><i class="leyenda-punto-pr"></i>Récord del ejercicio</span>
       </div>
     </figure>
 
@@ -601,10 +606,15 @@ function dibujarLineaEjercicio(canvas, datos, unidad) {
     }
   }
 
-  // Se etiquetan solo el máximo y el último punto. Un número sobre cada
-  // punto convierte el gráfico en una tabla ilegible.
-  const iMax = datos.reduce((m, f, i) => (Number(f.peso) > Number(datos[m].peso) ? i : m), 0);
-  const aEtiquetar = new Set([iMax, datos.length - 1]);
+  // El récord: la PRIMERA vez que se alcanzó esa carga. Si el peso se
+  // repitió después, el récord se marcó ese primer día, no el último.
+  // Solo cuenta si es el máximo de TODO el historial del ejercicio, no
+  // el de la ventana que se está viendo — si no, cualquier recorte
+  // inventaría récords que no existen.
+  const maximoGlobal = Math.max(...S.filas
+    .filter((f) => f.exercise_id === S.ejercicioId)
+    .map((f) => Number(f.peso)));
+  const iPR = datos.findIndex((f) => Number(f.peso) === maximoGlobal);
 
   S.graficos.push(new Chart(canvas, {
     type: 'line',
@@ -617,7 +627,14 @@ function dibujarLineaEjercicio(canvas, datos, unidad) {
           borderColor: p.serie1,
           backgroundColor: conAlfa(p.serie1, 0.14),   // el área de lo realmente levantado
           fill: 'origin',
-          borderWidth: 2, pointRadius: 4, pointHoverRadius: 8, tension: 0.15,
+          borderWidth: 2, tension: 0.15,
+          // El punto del récord es más grande, verde y con un anillo del
+          // color del fondo, que es lo que lo separa de la línea.
+          pointRadius:          datos.map((_, i) => (i === iPR ? 7 : 4)),
+          pointHoverRadius:     datos.map((_, i) => (i === iPR ? 10 : 8)),
+          pointBackgroundColor: datos.map((_, i) => (i === iPR ? p.progreso : p.serie1)),
+          pointBorderColor:     datos.map((_, i) => (i === iPR ? p.fondo : p.serie1)),
+          pointBorderWidth:     datos.map((_, i) => (i === iPR ? 2 : 0)),
         },
         {
           label: `1RM estimado (${unidad})`,
@@ -628,9 +645,91 @@ function dibujarLineaEjercicio(canvas, datos, unidad) {
         },
       ],
     },
-    options: opcionesBase(p, unidad),
-    plugins: [pluginCortes(cortes, p), pluginEtiquetas(aEtiquetar, p)],
+    options: {
+      ...opcionesBase(p, unidad),
+      // Más aire arriba y a la derecha que en el resto: la insignia del
+      // récord vive por encima de su etiqueta, y si el récord cae en el
+      // último punto queda pegada al borde.
+      layout: { padding: { top: 34, right: 20, left: 4 } },
+      plugins: {
+        ...opcionesBase(p, unidad).plugins,
+        tooltip: {
+          ...opcionesBase(p, unidad).plugins.tooltip,
+          callbacks: {
+            label: (c) => `${c.dataset.label}: ${fmtNum(c.parsed.y)}`
+              + (c.datasetIndex === 0 && c.dataIndex === iPR ? '  ·  récord' : ''),
+          },
+        },
+      },
+    },
+    plugins: [pluginCortes(cortes, p), pluginEtiquetasLinea(iPR, p)],
   }));
+}
+
+/**
+ * Un número sobre CADA punto, y una insignia sobre el récord.
+ *
+ * Etiquetar todos los puntos solo funciona porque el horizonte limita
+ * cuántos se ven a la vez. Cuando aun así quedan apretados, las
+ * etiquetas se alternan arriba y abajo en lugar de encimarse: preferible
+ * un zigzag legible a una fila de números pisados.
+ */
+function pluginEtiquetasLinea(iPR, p) {
+  return {
+    id: 'etiquetasLinea',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const puntos = meta.data;
+      if (!puntos.length) return;
+
+      const separacion = puntos.length > 1 ? Math.abs(puntos[1].x - puntos[0].x) : 999;
+      const alterna = separacion < 44;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+
+      puntos.forEach((punto, i) => {
+        const v = chart.data.datasets[0].data[i];
+        if (v == null) return;
+
+        const esPR = i === iPR;
+        const arriba = esPR || !alterna || i % 2 === 0;
+        const y = arriba ? punto.y - 11 : punto.y + 19;
+
+        ctx.font = `${esPR ? '600 12px' : '11px'} ui-monospace, monospace`;
+        ctx.fillStyle = esPR ? p.progreso : p.texto;
+        ctx.fillText(fmtNum(v), punto.x, y);
+
+        if (!esPR) return;
+
+        // La insignia: un "PR" chiquito encima del número. Se dibuja con
+        // texto y no con un icono porque a este tamaño un icono es una
+        // mancha, y "PR" se lee.
+        const texto = 'PR';
+        ctx.font = '700 9px ui-monospace, monospace';
+        const ancho = ctx.measureText(texto).width + 8;
+        const alto = 13;
+        const bx = punto.x - ancho / 2;
+        const by = y - 24;
+
+        ctx.fillStyle = p.progreso;
+        ctx.beginPath();
+        // roundRect es reciente; en un navegador viejo un rectángulo
+        // recto se ve bien igual y es preferible a que no se dibuje nada.
+        if (ctx.roundRect) ctx.roundRect(bx, by, ancho, alto, 6);
+        else ctx.rect(bx, by, ancho, alto);
+        ctx.fill();
+
+        ctx.fillStyle = token('--color-texto-sobre-acento');
+        ctx.textBaseline = 'middle';
+        ctx.fillText(texto, punto.x, by + alto / 2 + 0.5);
+        ctx.textBaseline = 'alphabetic';
+      });
+
+      ctx.restore();
+    },
+  };
 }
 
 // ------------------------------------------------------------
