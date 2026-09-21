@@ -125,6 +125,13 @@ Tres líneas que no se cruzan:
 El esquema y las políticas están en `sql/`. Al cambiar una política, actualizar el
 archivo correspondiente en `sql/` — es la fuente de verdad, no el panel de Supabase.
 
+**La pantalla de Administración (`app/admin.js`) no abre permisos nuevos.** Pone botones
+sobre políticas que ya existían y que las pruebas ya cubrían. Deja fuera tres cosas a
+propósito, y no son omisiones: escribir el entrenamiento de otro, ver la composición
+corporal de nadie, y borrar cuentas. Lo primero rompería el modelo de confianza; lo
+último arrastra por cascada todo el historial de esa persona, así que sigue siendo un
+trámite incómodo en el SQL Editor. Bloquear cubre el caso real y conserva los datos.
+
 ## Estructura
 
 ```
@@ -356,6 +363,13 @@ diría FALLA sin que nada estuviera mal. Una suite que cría falsos positivos se
 mirar, y entonces ya no protege nada. **Al agregar una prueba nueva, acotarla a los
 usuarios de prueba** — salvo las de cuentas pendientes, que deben ver cero de todo el
 mundo y por eso sí cuentan sin filtro.
+
+Lo mismo vale para las reglas que miran el estado GLOBAL de la base. El guardián del
+último administrador cuenta todos los administradores, no los de la prueba: en una base
+recién creada el de prueba es el único y la regla rechaza; en producción hay al menos
+uno real y la regla permite. Las dos cosas son correctas. Una prueba sobre una regla así
+**calcula qué esperar en vez de suponerlo** (ver las pruebas 63 y 64), o comprueba que la
+regla esté instalada en lugar de provocarla.
 
 ## Migrar la planilla original
 

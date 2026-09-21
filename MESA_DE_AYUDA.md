@@ -1,8 +1,11 @@
 # Mesa de ayuda
 
-Lo que el administrador resuelve **desde el SQL Editor de Supabase**, sin que exista
-pantalla de administración en la app. La v1 no la necesita: con 20 usuarios, estas
-operaciones son unas pocas al mes.
+Lo corriente —aprobar cuentas, bloquear, nombrar coaches, invitar, asignar atletas— ya se
+hace desde la **pantalla de Administración** de la app, que solo ve el administrador.
+
+Este archivo es para lo que esa pantalla NO hace, a propósito: borrar cuentas, mover
+permisos de un vínculo a mano, y averiguar quién escribió un dato. Son operaciones raras
+y algunas irreversibles; que exijan abrir el SQL Editor es parte del diseño.
 
 > El SQL Editor corre como dueño de la base y **se salta RLS**. Es potente y no avisa.
 > Lee la consulta antes de darle Run, y fíjate en el `where`.
@@ -21,6 +24,8 @@ select email, nombre, rol, estado, creado
 ```
 
 ## Aprobar a alguien que quedó pendiente
+
+> Esto ya se hace desde la pantalla de Administración. La consulta queda por si acaso.
 
 Pasa cuando entra con un correo que no estaba en `invitaciones` — típicamente un link
 reenviado, o un gmail distinto al que anotaste.
@@ -152,5 +157,5 @@ El respaldo diario guarda 30 días. Ver `RESTAURAR.md` — se restaura en el pro
 -- pegar sql/99_pruebas_rls.sql entero
 ```
 
-Las 51 pruebas tienen que decir OK. Crea y borra sus propios usuarios de prueba, así que
+Las 64 pruebas tienen que decir OK. Crea y borra sus propios usuarios de prueba, así que
 se puede correr en producción sin miedo. Al terminar: `drop table _pruebas_rls;`

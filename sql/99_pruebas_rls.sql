@@ -27,6 +27,8 @@
 --   · Nadie puede ascenderse a sí mismo ni auto-aprobarse
 --   · El plan se crea, reordena y sucede sin perder historial, y un
 --     día con entrenamientos registrados no se puede borrar
+--   · El administrador aprueba, bloquea, nombra coaches, invita y
+--     asigna; un atleta no puede hacer nada de eso llamando a la API
 -- ============================================================
 
 drop table if exists _pruebas_rls;
@@ -560,6 +562,128 @@ begin
   delete from auth.users where id in (ANA, COACH);
   delete from invitaciones where email like '%@rt.local';
   delete from exercises where nombre in ('Remo propio','Truco global');
+end $$;
+
+-- ============================================================
+-- TERCERA TANDA · la pantalla de administración (pruebas 52 a 62)
+--
+-- No abre permisos nuevos: comprueba que los que ya existían hacen
+-- exactamente lo que la pantalla ofrece, y que un atleta no puede
+-- hacer nada de eso aunque llame a la API a mano.
+-- ============================================================
+do $$
+declare
+  JEFA  constant uuid := '20000000-0000-0000-0000-000000000001';
+  COACH constant uuid := '20000000-0000-0000-0000-000000000002';
+  ATL   constant uuid := '20000000-0000-0000-0000-000000000003';
+  n int; txt text;
+begin
+  perform set_config('request.jwt.claims', json_build_object('role','service')::text, true);
+
+  delete from auth.users where id in (JEFA, COACH, ATL);
+  delete from invitaciones where email like '%@ad.local';
+  insert into invitaciones (email) values ('jefa@ad.local'), ('coach@ad.local'), ('atl@ad.local');
+  insert into auth.users (id, email) values
+    (JEFA,'jefa@ad.local'), (COACH,'coach@ad.local'), (ATL,'atl@ad.local');
+  update profiles set rol = 'admin' where id = JEFA;
+
+  -- ===== LA ADMINISTRADORA =====
+  perform set_config('request.jwt.claims', json_build_object('sub',JEFA,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into n from profiles where id in (JEFA, COACH, ATL);
+  insert into _pruebas_rls values (52, 'Admin ve a todas las personas', n::text, '3');
+
+  update profiles set rol = 'coach' where id = COACH;
+  select rol::text into txt from profiles where id = COACH;
+  insert into _pruebas_rls values (53, 'Admin nombra a un coach', txt, 'coach');
+
+  update profiles set estado = 'bloqueado' where id = ATL;
+  select estado::text into txt from profiles where id = ATL;
+  insert into _pruebas_rls values (54, 'Admin bloquea una cuenta', txt, 'bloqueado');
+
+  update profiles set estado = 'activo' where id = ATL;
+  select estado::text into txt from profiles where id = ATL;
+  insert into _pruebas_rls values (55, 'Admin reactiva una cuenta', txt, 'activo');
+
+  insert into invitaciones (email, invitado_por) values ('nuevo@ad.local', JEFA);
+  select count(*) into n from invitaciones where email = 'nuevo@ad.local';
+  insert into _pruebas_rls values (56, 'Admin carga una invitación', n::text, '1');
+
+  delete from invitaciones where email = 'nuevo@ad.local';
+  select count(*) into n from invitaciones where email = 'nuevo@ad.local';
+  insert into _pruebas_rls values (57, 'Admin quita una invitación', n::text, '0');
+
+  insert into coach_links (coach_id, atleta_id, creado_por) values (COACH, ATL, JEFA);
+  select count(*) into n from coach_links where coach_id = COACH and atleta_id = ATL;
+  insert into _pruebas_rls values (58, 'Admin asigna un atleta a un coach', n::text, '1');
+
+  delete from coach_links where coach_id = COACH and atleta_id = ATL;
+  select count(*) into n from coach_links where coach_id = COACH and atleta_id = ATL;
+  insert into _pruebas_rls values (59, 'Admin retira la asignación', n::text, '0');
+
+  execute 'reset role';
+
+  -- ===== UN ATLETA CUALQUIERA, llamando a la API a mano =====
+  perform set_config('request.jwt.claims', json_build_object('sub',ATL,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into n from invitaciones;
+  insert into _pruebas_rls values (60, 'Un atleta lee la lista de invitados', n::text, '0');
+
+  begin
+    insert into invitaciones (email) values ('colado@ad.local');
+    insert into _pruebas_rls values (61, 'Un atleta se invita a alguien', 'PERMITIDO', 'RECHAZADO');
+  exception when others then
+    insert into _pruebas_rls values (61, 'Un atleta se invita a alguien', 'RECHAZADO', 'RECHAZADO');
+  end;
+
+  begin
+    insert into coach_links (coach_id, atleta_id) values (ATL, COACH);
+    insert into _pruebas_rls values (62, 'Un atleta se asigna un atleta', 'PERMITIDO', 'RECHAZADO');
+  exception when others then
+    insert into _pruebas_rls values (62, 'Un atleta se asigna un atleta', 'RECHAZADO', 'RECHAZADO');
+  end;
+
+  execute 'reset role';
+
+  -- ===== La red que impide quedarse sin administrador =====
+  --
+  -- Acá hay una trampa: el guardián cuenta los administradores de TODA
+  -- la base, no los de la prueba. En una base recién creada la
+  -- administradora de prueba es la única y el guardián debe rechazar;
+  -- en producción siempre hay al menos un administrador real, así que
+  -- son dos y quitarle el rol a la de prueba debe PERMITIRSE — eso es
+  -- el guardián funcionando bien, no fallando.
+  --
+  -- Por eso la prueba se parte en dos: que el guardián esté instalado
+  -- (estable en cualquier base) y que su comportamiento calce con
+  -- cuántos administradores hay de verdad (calculado, no supuesto).
+  perform set_config('request.jwt.claims', json_build_object('sub',JEFA,'role','authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select case when exists (
+      select 1 from pg_trigger t join pg_proc f on f.oid = t.tgfoid
+       where t.tgrelid = 'public.profiles'::regclass
+         and not t.tgisinternal
+         and pg_get_functiondef(f.oid) like '%único administrador%'
+    ) then 'sí' else 'no' end into txt;
+  insert into _pruebas_rls values (63, 'El guardián del último administrador está instalado', txt, 'sí');
+
+  select count(*) into n from profiles where rol = 'admin';
+  begin
+    update profiles set rol = 'atleta' where id = JEFA;
+    insert into _pruebas_rls values (64, 'Quitar el rol solo si queda otro administrador',
+      case when found then 'PERMITIDO' else 'RECHAZADO' end,
+      case when n <= 1 then 'RECHAZADO' else 'PERMITIDO' end);
+  exception when others then
+    insert into _pruebas_rls values (64, 'Quitar el rol solo si queda otro administrador',
+      'RECHAZADO', case when n <= 1 then 'RECHAZADO' else 'PERMITIDO' end);
+  end;
+  execute 'reset role';
+
+  delete from auth.users where id in (JEFA, COACH, ATL);
+  delete from invitaciones where email like '%@ad.local';
 end $$;
 
 select n, prueba, obtenido, esperado,

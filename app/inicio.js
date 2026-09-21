@@ -34,6 +34,10 @@ const ICONOS = {
   instrucciones: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
       stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/>
       <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.3"/><path d="M12 17h.01"/></svg>`,
+  admin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/>
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="6.5" r="2.4"/>
+      <path d="M16 12.5a4 4 0 0 1 4.5 3"/></svg>`,
 };
 
 const DESTINOS = [
@@ -47,6 +51,12 @@ const DESTINOS = [
     sub: 'Define qué días entrenas y qué ejercicios tiene cada uno.' },
   { id: 'instrucciones', titulo: 'Cómo se usa',
     sub: 'Para qué sirve cada pantalla y quién puede ver qué.', ancho: true },
+  // Solo para el administrador. Se filtra abajo por rol: no basta con
+  // esconder el botón —RLS es quien decide de verdad— pero ofrecer una
+  // puerta que va a fallar es una forma tonta de confundir a la gente.
+  { id: 'admin', titulo: 'Administración',
+    sub: 'Aprobar cuentas, asignar roles y repartir atletas entre coaches.',
+    ancho: true, soloAdmin: true },
 ];
 
 export function montarInicio(contenedor, perfil, ir) {
@@ -62,7 +72,7 @@ export function montarInicio(contenedor, perfil, ir) {
       </p>
 
       <div class="destinos">
-        ${DESTINOS.map((d) => `
+        ${DESTINOS.filter((d) => !d.soloAdmin || perfil.rol === 'admin').map((d) => `
           <button class="destino ${d.ancho ? 'destino--ancho' : ''}" type="button" data-ir="${d.id}">
             <span class="destino-icono" aria-hidden="true">${ICONOS[d.id]}</span>
             <span class="destino-texto">

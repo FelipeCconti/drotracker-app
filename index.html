@@ -42,6 +42,7 @@
   import { montarProgreso } from './app/progreso.js';
   import { montarComposicion } from './app/composicion.js';
   import { montarRutina } from './app/rutina.js';
+  import { montarAdmin } from './app/admin.js';
   import { esc } from './app/ui.js';
 
   const PANTALLAS = [
@@ -51,6 +52,10 @@
     { id: 'composicion',   titulo: 'Composición', montar: montarComposicion },
     { id: 'rutina',        titulo: 'Rutina',      montar: montarRutina },
     { id: 'instrucciones', titulo: 'Cómo se usa', montar: montarInstrucciones, oculta: true },
+    // Fuera de la navegación: se entra por el botón del inicio, que solo
+    // ve el administrador. La pantalla vuelve a comprobar el rol, porque
+    // esconder un botón no es un permiso.
+    { id: 'admin',         titulo: 'Administración', montar: montarAdmin,      oculta: true },
   ];
 
   const ROLES = { atleta: 'Atleta', coach: 'Coach', admin: 'Administrador' };

@@ -1447,3 +1447,152 @@
   background: var(--color-progreso);
   box-shadow: 0 0 0 2px var(--color-superficie), 0 0 0 3px var(--color-progreso-tenue);
 }
+
+/* ============================================================
+   ADMINISTRACIÓN
+   ============================================================ */
+
+.admin-bloque {
+  margin-bottom: var(--esp-5);
+  padding: var(--esp-5);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+}
+
+.admin-cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--esp-4);
+}
+
+.admin-titulo {
+  margin: 0 0 var(--esp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.admin-cabecera .admin-titulo { margin-bottom: 0; }
+
+.admin-cuenta {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto-debil);
+  background: var(--color-superficie-alta);
+  padding: 2px var(--esp-2);
+  border-radius: var(--radio-full);
+}
+
+/* ---- Personas ---- */
+
+.lista-personas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+}
+
+.persona {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-4);
+  flex-wrap: wrap;
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--color-superficie-alta);
+  border-left: 3px solid transparent;
+  border-radius: var(--radio-sm);
+}
+
+/* El estado se ve antes de leerlo: una cuenta pendiente pide acción y
+   una bloqueada explica por qué esa persona dice que "no le funciona". */
+.persona--pendiente { border-left-color: var(--color-acento); }
+.persona--bloqueado { border-left-color: var(--color-estancamiento); opacity: 0.75; }
+
+.persona-quien { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.persona-nombre {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto);
+}
+.persona-yo {
+  font-family: var(--fuente-texto);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-normal);
+  color: var(--color-texto-sobre-acento);
+  background: var(--color-acento);
+  padding: 1px var(--esp-2);
+  border-radius: var(--radio-full);
+}
+.persona-correo {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-tenue);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.persona-meta { font-size: var(--texto-xs); color: var(--color-texto-debil); }
+
+.persona-controles { display: flex; gap: var(--esp-3); flex: 0 0 auto; }
+.persona-controles .entrada--select { font-size: var(--texto-sm); padding: var(--esp-2); }
+
+/* ---- Invitaciones ---- */
+
+.lista-invitaciones {
+  list-style: none;
+  margin: var(--esp-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+}
+
+.invitacion {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--radio-sm);
+}
+.invitacion:nth-child(odd) { background: var(--color-superficie-alta); }
+
+.invitacion-correo {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-sm);
+  color: var(--color-texto-tenue);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.invitacion-estado {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  white-space: nowrap;
+}
+.invitacion-estado--entro { color: var(--color-progreso); }
+
+.lista-asignacion { max-height: 26rem; overflow-y: auto; }
+.campo-chico--ancho { min-width: 16rem; }
+
+@media (max-width: 640px) {
+  .admin-bloque { padding: var(--esp-4); }
+  .persona { flex-direction: column; align-items: stretch; gap: var(--esp-3); }
+  .persona-controles { width: 100%; }
+  .persona-controles .campo-chico { flex: 1 1 0; }
+  .persona-controles .entrada--select { width: 100%; }
+}

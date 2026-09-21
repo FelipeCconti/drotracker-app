@@ -540,3 +540,74 @@ export async function misAtletas(miId) {
     }))
     .sort((a, b) => (a.nombre || a.email).localeCompare(b.nombre || b.email));
 }
+
+// ------------------------------------------------------------
+// Administración
+//
+// Nada de esto abre permisos nuevos: son las mismas políticas que ya
+// existían y que cubren las pruebas de sql/99. Lo único que cambia es
+// que ahora hay botones en vez de consultas a mano.
+//
+// Lo que el administrador sigue SIN poder hacer, por diseño y no por
+// olvido: escribir el entrenamiento de otro, ver la composición
+// corporal de nadie, y borrar cuentas desde la app.
+// ------------------------------------------------------------
+
+export async function todosLosPerfiles() {
+  return revisar(await supabase
+    .from('profiles')
+    .select('id, nombre, email, rol, estado, creado')
+    .order('creado')) || [];
+}
+
+export async function cambiarRol(id, rol) {
+  return revisar(await supabase
+    .from('profiles').update({ rol }).eq('id', id)
+    .select('id, rol').single());
+}
+
+export async function cambiarEstado(id, estado) {
+  return revisar(await supabase
+    .from('profiles').update({ estado }).eq('id', id)
+    .select('id, estado').single());
+}
+
+export async function listaInvitaciones() {
+  return revisar(await supabase
+    .from('invitaciones')
+    .select('email, nota, creado')
+    .order('email')) || [];
+}
+
+export async function agregarInvitacion(email, invitadoPor) {
+  const { error } = await supabase
+    .from('invitaciones')
+    .insert({ email: email.trim().toLowerCase(), invitado_por: invitadoPor });
+  if (error && error.code !== '23505') throw error;   // ya invitado: no es un error
+}
+
+export async function quitarInvitacion(email) {
+  const { error } = await supabase.from('invitaciones').delete().eq('email', email);
+  if (error) throw error;
+}
+
+/** Todos los vínculos coach–atleta, para contar y para las casillas. */
+export async function todosLosVinculos() {
+  return revisar(await supabase
+    .from('coach_links')
+    .select('coach_id, atleta_id, puede_editar_plan, puede_registrar')) || [];
+}
+
+export async function asignarAtleta(coachId, atletaId, creadoPor) {
+  const { error } = await supabase
+    .from('coach_links')
+    .insert({ coach_id: coachId, atleta_id: atletaId, creado_por: creadoPor });
+  if (error && error.code !== '23505') throw error;
+}
+
+export async function desasignarAtleta(coachId, atletaId) {
+  const { error } = await supabase
+    .from('coach_links').delete()
+    .eq('coach_id', coachId).eq('atleta_id', atletaId);
+  if (error) throw error;
+}
