@@ -244,12 +244,18 @@ function pintarPorDia() {
   }
 
   const dia = S.dias.find((d) => d.id === S.diaId) || S.dias[0];
-  const deEsteDia = new Set(S.ejerciciosDeDia.get(dia.id) || []);
 
-  // Solo la rutina vigente: el "Día 2" de una rutina y el de otra no
-  // son lo mismo, así que esta vista no cruza rutinas a propósito.
-  const delDia = S.filas.filter((f) =>
-    deEsteDia.has(f.exercise_id) && f.routine_id === S.rutina?.id);
+  // Por el DÍA DE LA SESIÓN, no por "este ejercicio está en el plan de
+  // este día". La diferencia importa en cuanto un ejercicio aparece en
+  // dos días —un press banca en el de empuje y en el opcional—: filtrar
+  // por el plan traía los registros de los dos días a los dos gráficos,
+  // y parecían duplicados sin serlo. Se nota sobre todo al entrenar dos
+  // días en una jornada.
+  //
+  // Esta vista no cruza rutinas a propósito: el "Día 2" de una rutina y
+  // el de otra no son lo mismo. El filtro por routine_day_id ya lo
+  // garantiza, porque los días pertenecen a una rutina.
+  const delDia = S.filas.filter((f) => f.routine_day_id === dia.id);
 
   const porEjercicio = new Map();
   for (const f of delDia) {

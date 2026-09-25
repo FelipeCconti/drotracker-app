@@ -124,6 +124,23 @@ export async function ultimaSesion(userId) {
     .maybeSingle());
 }
 
+/**
+ * Qué días de la rutina ya tienen sesión en esta fecha.
+ *
+ * Hacer dos o tres días en una misma jornada es normal —semanas cortas,
+ * festivos— y cada uno es su propia sesión. Esto es lo que permite
+ * marcarlos en la barra de días para que se vea de un vistazo cuáles ya
+ * están anotados y cuál falta.
+ */
+export async function diasConSesion(userId, fecha) {
+  const filas = revisar(await supabase
+    .from('workout_sessions')
+    .select('routine_day_id')
+    .eq('user_id', userId)
+    .eq('fecha', fecha)) || [];
+  return new Set(filas.map((f) => f.routine_day_id).filter(Boolean));
+}
+
 /** ¿Ya hay una sesión de este día en esta fecha? */
 export async function buscarSesion(userId, routineDayId, fecha) {
   return revisar(await supabase
@@ -159,19 +176,18 @@ export async function actualizarSesion(sessionId, campos) {
 }
 
 /**
- * Lo ya registrado en una sesión, indexado por la fila del PLAN cuando
- * la hay y por el ejercicio cuando no (registro fuera de la rutina).
+ * Lo ya registrado en una sesión, en crudo.
  *
- * La distinción importa si alguien repite el mismo movimiento dos veces
- * en un día: indexado por ejercicio, la segunda fila taparía a la
- * primera y una de las dos cargas se perdería al volver a abrir.
+ * Devuelve las filas tal cual y NO las indexa: emparejarlas con el plan
+ * del día es trabajo de la pantalla, que es la única que sabe qué
+ * ejercicios tiene ese día hoy. Indexarlas acá fue un error que costó
+ * datos duplicados — ver el comentario en entrenar.js.
  */
 export async function registrosDeSesion(sessionId) {
-  const filas = revisar(await supabase
+  return revisar(await supabase
     .from('set_logs')
-    .select('id, exercise_id, routine_exercise_id, series, reps, peso, unidad, rpe, actualizado_en, registrado_por')
+    .select('id, exercise_id, routine_exercise_id, series, reps, peso, unidad, rpe, actualizado_en, registrado_por, exercises(nombre, grupo_muscular)')
     .eq('session_id', sessionId)) || [];
-  return new Map(filas.map((f) => [f.routine_exercise_id ?? f.exercise_id, f]));
 }
 
 /**
@@ -188,6 +204,11 @@ export async function guardarRegistro({ setLogId, sessionId, exerciseId, routine
     peso: peso ?? null,
     unidad: unidad || 'kg',
   };
+
+  // Si la fila venía de un plan que ya no existe —porque se editó la
+  // rutina— se re-ancla al vigente al guardarla. Así deja de quedar
+  // huérfana y la próxima vez se encuentra por la vía normal.
+  if (routineExerciseId) campos.routine_exercise_id = routineExerciseId;
 
   if (setLogId) {
     return revisar(await supabase
@@ -237,7 +258,7 @@ export async function borrarSesion(sessionId) {
 export async function historial(userId) {
   return revisar(await supabase
     .from('v_historial_ejercicio')
-    .select('exercise_id, ejercicio, grupo_muscular, fecha, routine_id, rutina, ciclo, semana, series, reps, peso, volumen, rm_estimado')
+    .select('exercise_id, ejercicio, grupo_muscular, fecha, session_id, routine_id, rutina, routine_day_id, dia, dia_orden, ciclo, semana, series, reps, peso, volumen, rm_estimado')
     .eq('user_id', userId)
     .not('peso', 'is', null)
     .order('fecha')

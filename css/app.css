@@ -1596,3 +1596,29 @@
   .persona-controles .campo-chico { flex: 1 1 0; }
   .persona-controles .entrada--select { width: 100%; }
 }
+
+/* Un día que ya tiene registro en la fecha elegida. Hacer dos o tres
+   días en una jornada es normal; esto evita empezar de nuevo uno que
+   ya estaba anotado. */
+.chip-punto {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--esp-2);
+  vertical-align: middle;
+  border-radius: var(--radio-full);
+  background: var(--color-progreso);
+}
+.chip--anotado { border-color: var(--color-progreso-tenue); }
+
+/* El aviso de registros ajenos al pack. Va al final y en tono menor:
+   informa, no compite con la lista del día. */
+.explicacion--sueltos {
+  margin-top: var(--esp-4);
+  border-left-color: var(--color-acento);
+}
+.explicacion--sueltos p:first-of-type {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-xs);
+  color: var(--color-texto);
+}

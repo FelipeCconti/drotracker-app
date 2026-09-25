@@ -20,7 +20,7 @@
 // ============================================================
 
 import {
-  rutinaVigente, diasDeRutina, ciclosDeRutina,
+  rutinaVigente, diasDeRutina, ciclosDeRutina, diasConSesion,
   ejerciciosDelDia, ultimoRegistroPorEjercicio, ultimaSesion, buscarSesion,
   crearSesion, actualizarSesion, registrosDeSesion, guardarRegistro,
   borrarRegistro, asegurarCiclo,
@@ -54,6 +54,8 @@ const S = {
   filas: [],           // una por ejercicio del día
   creandoSesion: null, // promesa en curso, para no crear dos
   cargandoDia: false,
+  diasConSesion: new Set(),   // qué días ya tienen registro en esta fecha
+  sueltos: [],                // registros de esta sesión ajenos a este pack
 };
 
 let raiz = null;
@@ -111,6 +113,7 @@ async function cargarDia() {
   // pero sin las filas del día anterior: dejarlas ahí un instante
   // invita a escribir en la fila equivocada.
   S.filas = [];
+  S.sueltos = [];
   S.cargandoDia = true;
   pintar();
 
@@ -118,10 +121,12 @@ async function cargarDia() {
     const ejercicios = await ejerciciosDelDia(S.dia.id);
     const ids = ejercicios.map((e) => e.exerciseId);
 
-    const [ultimos, sesion] = await Promise.all([
+    const [ultimos, sesion, conSesion] = await Promise.all([
       ultimoRegistroPorEjercicio(S.atleta.id, ids),
       buscarSesion(S.atleta.id, S.dia.id, S.fecha),
+      diasConSesion(S.atleta.id, S.fecha).catch(() => new Set()),
     ]);
+    S.diasConSesion = conSesion;
 
     S.sesion = sesion;
     if (sesion) {
@@ -129,14 +134,11 @@ async function cargarDia() {
       S.semana = sesion.semana ?? S.semana;
     }
 
-    const registrados = sesion ? await registrosDeSesion(sesion.id) : new Map();
+    const registrados = sesion ? await registrosDeSesion(sesion.id) : [];
+    const { tomar, sobrantes } = emparejarConElPlan(registrados, ejercicios);
 
     S.filas = ejercicios.map((ej) => {
-      // Indexado por la fila del PLAN, no por el ejercicio: si alguien
-      // pone el mismo movimiento dos veces en el día (una serie pesada
-      // y otra de descarga), son dos filas distintas y no una que se
-      // pisa a sí misma.
-      const ya = registrados.get(ej.routineExerciseId) ?? registrados.get(ej.exerciseId);
+      const ya = tomar(ej);
       const ultimo = ultimos.get(ej.exerciseId);
       return {
         ...ej,
@@ -155,6 +157,12 @@ async function cargarDia() {
         tocada: false,     // ¿la persona escribió algo en esta fila?
       };
     });
+
+    // Lo registrado que no pertenece a este pack NO se dibuja como
+    // ejercicio: un día es su pack y nada más. Pero tampoco se calla,
+    // porque si no, esos registros quedan atrapados — existen, salen en
+    // Progreso, y no hay forma de llegar a ellos. Se avisa y punto.
+    S.sueltos = sobrantes();
 
     S.cargandoDia = false;
     pintar();
@@ -190,6 +198,63 @@ function asegurarSesion() {
 
   S.creandoSesion.catch(() => { S.creandoSesion = null; });
   return S.creandoSesion;
+}
+
+/**
+ * Empareja lo ya registrado con los ejercicios del plan de hoy.
+ *
+ * Suena trivial y no lo es, porque el plan CAMBIA. Una fila de set_logs
+ * apunta a la fila del plan con la que se registró; si después se quitó
+ * ese ejercicio y se volvió a agregar, o se sucedió la rutina, esa fila
+ * del plan ya no existe y el registro queda huérfano.
+ *
+ * Las dos formas ingenuas fallan, cada una a su manera:
+ *
+ *   · Emparejar solo por EJERCICIO pierde el caso de un mismo movimiento
+ *     dos veces en el día: la segunda fila tapa a la primera.
+ *   · Emparejar solo por la FILA DEL PLAN pierde los registros huérfanos:
+ *     no los encuentra, los da por inexistentes, y crea uno nuevo encima.
+ *     El resultado son dos filas del mismo ejercicio el mismo día, y una
+ *     invisible desde la app. Esto pasó de verdad.
+ *
+ * Así que se hacen las dos, en orden: primero por la fila del plan; y si
+ * no hay, se ADOPTA una huérfana del mismo ejercicio. Cada huérfana se
+ * adopta una sola vez, así que dos ocurrencias del mismo ejercicio en el
+ * día toman una cada una. Al guardarse, la adoptada se re-ancla al plan
+ * vigente y deja de ser huérfana.
+ */
+function emparejarConElPlan(registros, ejercicios) {
+  const idsDelPlan = new Set(ejercicios.map((e) => e.routineExerciseId).filter(Boolean));
+
+  const porPlan = new Map();
+  const huerfanas = new Map();   // exercise_id → cola de filas sin plan reconocible
+
+  for (const r of registros) {
+    if (r.routine_exercise_id && idsDelPlan.has(r.routine_exercise_id)) {
+      porPlan.set(r.routine_exercise_id, r);
+    } else {
+      if (!huerfanas.has(r.exercise_id)) huerfanas.set(r.exercise_id, []);
+      huerfanas.get(r.exercise_id).push(r);
+    }
+  }
+
+  const tomar = (ej) => {
+    const directa = porPlan.get(ej.routineExerciseId);
+    if (directa) { porPlan.delete(ej.routineExerciseId); return directa; }
+    const cola = huerfanas.get(ej.exerciseId);
+    return cola && cola.length ? cola.shift() : undefined;
+  };
+
+  // Lo que queda sin reclamar después de recorrer el plan: registros de
+  // esta sesión cuyo ejercicio no es de este pack. No se dibujan como
+  // ejercicios —un día es su pack— pero se avisan, para que no queden
+  // invisibles. Ver avisoSueltosHTML.
+  const sobrantes = () => [
+    ...porPlan.values(),
+    ...[...huerfanas.values()].flat(),
+  ];
+
+  return { tomar, sobrantes };
 }
 
 /** Guarda una fila. Se encola para que dos ediciones no se pisen. */
@@ -278,10 +343,11 @@ function pintar() {
   raiz.innerHTML = `
     <div class="barra-dias" role="tablist" aria-label="Días de la rutina">
       ${S.dias.map((d) => `
-        <button class="chip ${d.id === S.dia?.id ? 'chip--activo' : ''}"
+        <button class="chip ${d.id === S.dia?.id ? 'chip--activo' : ''} ${S.diasConSesion.has(d.id) ? 'chip--anotado' : ''}"
                 role="tab" aria-selected="${d.id === S.dia?.id}"
-                data-dia="${esc(d.id)}" type="button">
-          <span class="chip-orden">Día ${d.orden}</span>
+                data-dia="${esc(d.id)}" type="button"
+                title="${S.diasConSesion.has(d.id) ? 'Ya tiene registro en esta fecha' : 'Sin registro en esta fecha'}">
+          <span class="chip-orden">Día ${d.orden}${S.diasConSesion.has(d.id) ? '<i class="chip-punto" aria-label="ya anotado"></i>' : ''}</span>
           <span class="chip-nombre">${esc(nombreCorto(d.nombre))}</span>
         </button>`).join('')}
     </div>
@@ -310,6 +376,7 @@ function pintar() {
       ${S.filas.map(filaHTML).join('')}
     </ul>
 
+    ${avisoSueltosHTML()}
     ${S.filas.length ? `<p class="pie-nota">Se guarda solo, a medida que escribes.</p>` : ''}
   `;
 
@@ -332,7 +399,7 @@ function filaHTML(f, i) {
   return `
     <li class="ejercicio" data-fila="${i}">
       <div class="ejercicio-cabecera">
-        <span class="ejercicio-orden">${f.orden}</span>
+        <span class="ejercicio-orden">${esc(f.orden)}</span>
         <div class="ejercicio-titulo">
           <h3 class="ejercicio-nombre">${esc(f.nombre)}</h3>
           <p class="ejercicio-referencia">${esc(referencia)}</p>
@@ -360,6 +427,36 @@ function filaHTML(f, i) {
 
       ${f.editado ? `<p class="ejercicio-editado">editado el ${esc(fmtFechaLarga(String(f.editado).slice(0, 10)))}</p>` : ''}
     </li>`;
+}
+
+/**
+ * Aviso —no una fila de ejercicio— cuando la sesión guarda registros de
+ * ejercicios que no son de este pack.
+ *
+ * Pasa al quitar un ejercicio del plan después de haberlo registrado.
+ * El registro se conserva a propósito, pero si la pantalla no dijera
+ * nada quedaría invisible: sale en Progreso y no hay forma de llegar a
+ * él. Se nombra y se dice qué hacer, sin ensuciar la lista del día.
+ */
+function avisoSueltosHTML() {
+  if (!S.sueltos.length) return '';
+  const nombres = S.sueltos
+    .map((r) => r.exercises?.nombre)
+    .filter(Boolean);
+
+  return `
+    <div class="explicacion explicacion--sueltos">
+      <h3 class="explicacion-titulo">
+        Esta sesión guarda ${S.sueltos.length === 1 ? 'un registro que no es' : `${S.sueltos.length} registros que no son`} de este día
+      </h3>
+      <p>${esc(nombres.join(' · '))}</p>
+      <p class="explicacion-aviso">
+        Quedaron acá porque se registraron cuando esos ejercicios estaban en el plan de
+        este día, o porque se anotaron en el día equivocado. Siguen contando en Progreso.
+        Para moverlos al día que les corresponde hace falta una consulta —dímelo y te la paso—;
+        si el ejercicio volviera al plan de este día, aparecería solo en la lista de arriba.
+      </p>
+    </div>`;
 }
 
 function textoEstado(estado) {
