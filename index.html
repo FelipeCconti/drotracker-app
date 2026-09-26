@@ -43,6 +43,7 @@
   import { montarComposicion } from './app/composicion.js';
   import { montarRutina } from './app/rutina.js';
   import { montarAdmin } from './app/admin.js';
+  import { montarMiCoach } from './app/mi-coach.js';
   import { esc } from './app/ui.js';
 
   const PANTALLAS = [
@@ -51,6 +52,10 @@
     { id: 'progreso',      titulo: 'Progreso',    montar: montarProgreso },
     { id: 'composicion',   titulo: 'Composición', montar: montarComposicion },
     { id: 'rutina',        titulo: 'Rutina',      montar: montarRutina },
+    // Fuera de la navegación: se entra por el botón del inicio, que solo
+    // aparece si hay un coach asignado. La pantalla misma se explica si
+    // no hay ninguno, así que entrar por el # tampoco rompe nada.
+    { id: 'mi-coach',      titulo: 'Mi coach',    montar: montarMiCoach,       oculta: true },
     { id: 'instrucciones', titulo: 'Cómo se usa', montar: montarInstrucciones, oculta: true },
     // Fuera de la navegación: se entra por el botón del inicio, que solo
     // ve el administrador. La pantalla vuelve a comprobar el rol, porque

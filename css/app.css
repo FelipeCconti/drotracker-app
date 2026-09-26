@@ -393,8 +393,18 @@
 
 .ejercicio-campos { display: flex; gap: var(--esp-3); }
 
+/* El pie de la fila: a la izquierda el rastro de la edición, a la
+   derecha el borrado. El botón solo existe si hay algo que borrar, y
+   el <span> vacío mantiene la alineación cuando no hay rastro. */
+.ejercicio-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-3);
+  margin-top: var(--esp-2);
+  min-height: 1rem;
+}
 .ejercicio-editado {
-  margin: var(--esp-2) 0 0;
   font-size: var(--texto-xs);
   color: var(--color-texto-debil);
   font-style: italic;
@@ -1042,6 +1052,72 @@
   color: var(--color-texto-debil);
 }
 .interruptor input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-acento); cursor: pointer; }
+.interruptor input:disabled { cursor: progress; opacity: 0.5; }
+
+/* ---- Mi coach: los tres permisos, con su explicación al lado ----
+
+   La versión corta de .permiso sirve donde el nombre basta (la lista de
+   asignación del admin). Acá no basta: quien lee esto está decidiendo
+   qué le deja tocar a otra persona, y necesita saber qué significa cada
+   interruptor antes de encenderlo. */
+
+.coach-tarjeta {
+  margin-bottom: var(--esp-4);
+  padding: var(--esp-4);
+  background: var(--color-superficie);
+  border: var(--borde-fino);
+  border-radius: var(--radio-md);
+  max-width: 68ch;
+}
+.coach-cabecera { margin-bottom: var(--esp-2); }
+.coach-nombre {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semi);
+  color: var(--color-texto);
+}
+.coach-correo {
+  margin: 2px 0 0;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+}
+.coach-resumen {
+  margin: var(--esp-3) 0 0;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-debil);
+  font-style: italic;
+}
+
+.lista-permisos--detallada { gap: var(--esp-3); }
+.permiso--detallado { align-items: flex-start; }
+.permiso-texto { display: flex; flex-direction: column; gap: 2px; }
+.permiso-detalle {
+  font-size: var(--texto-xs);
+  line-height: var(--interlinea-normal);
+  color: var(--color-texto-debil);
+}
+/* El interruptor se alinea con la primera línea del texto, no con su
+   centro; y su etiqueta no se parte en dos ("sí / puede"), que es lo que
+   pasa si se le deja competir por el ancho con la descripción. */
+.permiso--detallado .interruptor {
+  padding-top: 2px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .permiso--detallado { flex-direction: column; align-items: stretch; gap: var(--esp-2); }
+  .permiso--detallado .interruptor { padding-top: 0; }
+}
+
+/* Un botón secundario: lleva a otra pantalla, no ejecuta nada. */
+.boton--suave {
+  background: var(--color-superficie-alta);
+  color: var(--color-texto);
+  border: var(--borde-fino);
+}
+.boton--suave:hover { background: var(--color-acento-suave); }
 
 @media (max-width: 640px) {
   .graficos-composicion { grid-template-columns: 1fr; }
@@ -1617,8 +1693,29 @@
   margin-top: var(--esp-4);
   border-left-color: var(--color-acento);
 }
-.explicacion--sueltos p:first-of-type {
+/* Cada registro suelto con su dato y su botón: es la única forma de
+   llegar a ellos desde la app, así que tienen que ser accionables y no
+   solo una lista de nombres. */
+.lista-sueltos {
+  list-style: none;
+  margin: var(--esp-3) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+}
+.suelto {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  padding: var(--esp-2) var(--esp-3);
+  background: var(--color-superficie-alta);
+  border-radius: var(--radio-sm);
+}
+.suelto-nombre { flex: 1 1 auto; font-size: var(--texto-sm); color: var(--color-texto); }
+.suelto-dato {
+  flex: 0 0 auto;
   font-family: var(--fuente-mono);
   font-size: var(--texto-xs);
-  color: var(--color-texto);
+  color: var(--color-texto-debil);
 }

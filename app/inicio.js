@@ -1,10 +1,13 @@
 // ============================================================
 // DRO.TRACKER · pantalla de inicio
 //
-// Lo primero que se ve al entrar. Cinco destinos, cada uno con su
+// Lo primero que se ve al entrar. Un botón por destino, cada uno con su
 // símbolo, su nombre y una línea que dice qué se hace ahí — porque
 // "Composición" no significa nada para alguien que abre la app por
 // primera vez.
+//
+// Dos destinos no salen para todo el mundo: "Mi coach" solo si hay un
+// coach asignado, y "Administración" solo para el administrador.
 //
 // El logo de la cabecera vuelve siempre acá. Eso es lo que convierte
 // esta pantalla en un punto de referencia y no en un trámite: si te
@@ -16,7 +19,7 @@
 // ============================================================
 
 import { esc } from './ui.js';
-import { sesion, esPropio, nombreSujeto } from './sesion.js';
+import { sesion, esPropio, nombreSujeto, tengoCoach } from './sesion.js';
 
 const ICONOS = {
   entrenar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
@@ -31,6 +34,9 @@ const ICONOS = {
   rutina: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
       stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/>
       <path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h3M8 17h6"/></svg>`,
+  'mi-coach': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/>
+      <path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><path d="m15.5 11.5 1.6 1.6 3-3.1"/></svg>`,
   instrucciones: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
       stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/>
       <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.3"/><path d="M12 17h.01"/></svg>`,
@@ -49,6 +55,11 @@ const DESTINOS = [
     sub: 'Registra peso, grasa y agua, y sigue su evolución.' },
   { id: 'rutina', titulo: 'Rutina',
     sub: 'Define qué días entrenas y qué ejercicios tiene cada uno.' },
+  // Solo aparece si hay un coach asignado: ofrecer "Mi coach" a alguien
+  // que entrena solo es prometerle una pantalla vacía.
+  { id: 'mi-coach', titulo: 'Mi coach',
+    sub: 'Decide qué puede hacer contigo: registrar, armar tu rutina, ver tu composición.',
+    ancho: true, soloConCoach: true },
   { id: 'instrucciones', titulo: 'Cómo se usa',
     sub: 'Para qué sirve cada pantalla y quién puede ver qué.', ancho: true },
   // Solo para el administrador. Se filtra abajo por rol: no basta con
@@ -72,7 +83,10 @@ export function montarInicio(contenedor, perfil, ir) {
       </p>
 
       <div class="destinos">
-        ${DESTINOS.filter((d) => !d.soloAdmin || perfil.rol === 'admin').map((d) => `
+        ${DESTINOS
+          .filter((d) => !d.soloAdmin || perfil.rol === 'admin')
+          .filter((d) => !d.soloConCoach || tengoCoach())
+          .map((d) => `
           <button class="destino ${d.ancho ? 'destino--ancho' : ''}" type="button" data-ir="${d.id}">
             <span class="destino-icono" aria-hidden="true">${ICONOS[d.id]}</span>
             <span class="destino-texto">

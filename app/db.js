@@ -351,11 +351,23 @@ export async function borrarMedicion(id) {
   if (error) throw error;
 }
 
-/** Mis coaches, y si les concedí ver mi composición. */
-export async function misCoachesYAcceso(miId) {
+/**
+ * Mis coaches y los tres permisos que le he dado a cada uno.
+ *
+ * Son dos tablas distintas a propósito: los dos interruptores del
+ * entrenamiento viven en `coach_links` (columnas que solo el atleta y
+ * el admin pueden mover), y el de la composición vive en
+ * `composition_access`, una tabla que SOLO el atleta escribe. Juntarlos
+ * en una sola tabla haría que la mesa de ayuda pudiera abrir la
+ * composición de alguien sin querer.
+ *
+ * La pantalla los muestra juntos igual, porque para quien los usa son
+ * la misma pregunta: qué puede hacer mi coach conmigo.
+ */
+export async function misCoachesYPermisos(miId) {
   const [vinculos, accesos] = await Promise.all([
     supabase.from('coach_links')
-      .select('coach_id, profiles!coach_links_coach_id_fkey(id, nombre, email)')
+      .select('coach_id, puede_registrar, puede_editar_plan, profiles!coach_links_coach_id_fkey(id, nombre, email)')
       .eq('atleta_id', miId),
     supabase.from('composition_access').select('coach_id').eq('atleta_id', miId),
   ]);
@@ -364,9 +376,34 @@ export async function misCoachesYAcceso(miId) {
 
   const concedidos = new Set((accesos.data || []).map((a) => a.coach_id));
   return (vinculos.data || [])
-    .map((v) => v.profiles)
-    .filter(Boolean)
-    .map((p) => ({ ...p, tieneAcceso: concedidos.has(p.id) }));
+    .filter((v) => v.profiles)
+    .map((v) => ({
+      ...v.profiles,
+      puedeRegistrar:  v.puede_registrar,
+      puedeEditarPlan: v.puede_editar_plan,
+      veComposicion:   concedidos.has(v.coach_id),
+    }))
+    .sort((a, b) => (a.nombre || a.email).localeCompare(b.nombre || b.email));
+}
+
+/**
+ * Enciende o apaga uno de los dos interruptores del entrenamiento.
+ *
+ * `campo` solo puede ser una de las dos columnas que el atleta tiene
+ * concedidas: el resto de `coach_links` está fuera de su grant, así que
+ * un error de tipeo acá no abre nada — falla y ya. La lista explícita
+ * está para que falle en el navegador y no en la base.
+ */
+export async function cambiarPermisoCoach(atletaId, coachId, campo, valor) {
+  if (campo !== 'puede_registrar' && campo !== 'puede_editar_plan') {
+    throw new Error(`Permiso desconocido: ${campo}`);
+  }
+  const { error } = await supabase
+    .from('coach_links')
+    .update({ [campo]: valor })
+    .eq('atleta_id', atletaId)
+    .eq('coach_id', coachId);
+  if (error) throw error;
 }
 
 export async function concederComposicion(atletaId, coachId) {

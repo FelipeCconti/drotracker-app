@@ -23,7 +23,7 @@ import {
   rutinaVigente, diasDeRutina, ciclosDeRutina, diasConSesion,
   ejerciciosDelDia, ultimoRegistroPorEjercicio, ultimaSesion, buscarSesion,
   crearSesion, actualizarSesion, registrosDeSesion, guardarRegistro,
-  borrarRegistro, asegurarCiclo,
+  borrarRegistro, borrarSesion, asegurarCiclo,
 } from './db.js';
 
 import {
@@ -297,6 +297,79 @@ function guardarFila(fila) {
   });
 }
 
+/**
+ * Borra un registro y deja la fila como si nunca se hubiera anotado.
+ *
+ * Vaciar peso y reps también borra —eso ya estaba— pero solo funciona
+ * si se puede escribir en los campos. Un registro que entró por un
+ * toque accidental, o uno que quedó guardado con valores que no
+ * corresponden, necesita una salida explícita: sin ella la única
+ * manera de sacarlo era una consulta a la base. Pasó de verdad.
+ *
+ * La fila vuelve a su estado de "sin registrar", con la precarga de la
+ * última vez, igual que cualquier otra fila sin anotar del día.
+ */
+async function borrarFila(fila) {
+  if (!fila.setLogId) return;
+
+  await fila.cola(async () => {
+    marcarFila(fila, 'guardando');
+    try {
+      await borrarRegistro(fila.setLogId);
+
+      fila.setLogId = null;
+      fila.guardado = false;
+      fila.editado = null;
+      fila.tocada = false;
+      fila.pendiente = null;
+      fila.peso   = fila.ultimo?.peso   ?? fila.pesoBase   ?? null;
+      fila.series = fila.ultimo?.series ?? fila.seriesBase ?? 3;
+      fila.reps   = fila.ultimo?.reps   ?? fila.repsBase   ?? null;
+
+      await limpiarSesionSiQuedaVacia();
+      pintar();
+      avisar('Registro borrado.');
+    } catch (e) {
+      marcarFila(fila, 'error', mensajeDeError(e));
+    }
+  });
+}
+
+/** Borra uno de los registros sueltos: los que no son de este pack. */
+async function borrarSuelto(setLogId) {
+  try {
+    await borrarRegistro(setLogId);
+    S.sueltos = S.sueltos.filter((r) => r.id !== setLogId);
+    await limpiarSesionSiQuedaVacia();
+    pintar();
+    avisar('Registro borrado.');
+  } catch (e) {
+    avisar(mensajeDeError(e), 'error');
+  }
+}
+
+/**
+ * Si al borrar quedó una sesión sin ningún registro, se va con ella.
+ *
+ * La pantalla se cuida de no crear sesiones vacías —la sesión nace con
+ * el primer dato— y por coherencia tampoco debe dejarlas. Una sesión
+ * vacía deja el punto verde encendido en un día donde no hay nada.
+ */
+async function limpiarSesionSiQuedaVacia() {
+  if (!S.sesion) return;
+  const quedan = S.filas.some((f) => f.setLogId) || S.sueltos.length;
+  if (quedan) return;
+  try {
+    await borrarSesion(S.sesion.id);
+    S.sesion = null;
+    S.creandoSesion = null;
+    S.diasConSesion = new Set([...S.diasConSesion].filter((id) => id !== S.dia.id));
+  } catch {
+    // Que no se pueda borrar la sesión vacía no invalida el borrado del
+    // registro, que es lo que la persona pidió. Se queda y no se avisa.
+  }
+}
+
 /** Reintenta todo lo que quedó pendiente. Se dispara al volver la red. */
 async function reintentarPendientes() {
   const pendientes = S.filas.filter((f) => f.pendiente);
@@ -382,7 +455,33 @@ function pintar() {
 
   conectarDias();
   conectarContexto();
+  conectarBorrados();
   S.filas.forEach(conectarFila);
+}
+
+/**
+ * Los dos borrados piden confirmación, y esa es la única confirmación
+ * de esta pantalla. El resto se guarda solo, sin preguntar, porque lo
+ * escrito se puede corregir escribiendo encima. Un borrado no.
+ */
+function conectarBorrados() {
+  raiz.querySelectorAll('[data-borrar-fila]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const fila = S.filas[Number(b.dataset.borrarFila)];
+      if (!fila?.setLogId) return;
+      if (!confirm(`¿Borrar el registro de ${fila.nombre} de este día? No se puede deshacer.`)) return;
+      borrarFila(fila);
+    });
+  });
+
+  raiz.querySelectorAll('[data-borrar-suelto]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const r = S.sueltos.find((x) => x.id === b.dataset.borrarSuelto);
+      if (!r) return;
+      if (!confirm(`¿Borrar el registro de ${r.exercises?.nombre || 'este ejercicio'}? No se puede deshacer.`)) return;
+      borrarSuelto(r.id);
+    });
+  });
 }
 
 function nombreCorto(nombre) {
@@ -425,7 +524,11 @@ function filaHTML(f, i) {
         </label>
       </div>
 
-      ${f.editado ? `<p class="ejercicio-editado">editado el ${esc(fmtFechaLarga(String(f.editado).slice(0, 10)))}</p>` : ''}
+      ${f.editado || f.setLogId ? `
+        <div class="ejercicio-pie">
+          <span class="ejercicio-editado">${f.editado ? `editado el ${esc(fmtFechaLarga(String(f.editado).slice(0, 10)))}` : ''}</span>
+          ${f.setLogId ? `<button type="button" class="enlace enlace--riesgo" data-borrar-fila="${i}">borrar este registro</button>` : ''}
+        </div>` : ''}
     </li>`;
 }
 
@@ -440,21 +543,25 @@ function filaHTML(f, i) {
  */
 function avisoSueltosHTML() {
   if (!S.sueltos.length) return '';
-  const nombres = S.sueltos
-    .map((r) => r.exercises?.nombre)
-    .filter(Boolean);
 
   return `
     <div class="explicacion explicacion--sueltos">
       <h3 class="explicacion-titulo">
         Esta sesión guarda ${S.sueltos.length === 1 ? 'un registro que no es' : `${S.sueltos.length} registros que no son`} de este día
       </h3>
-      <p>${esc(nombres.join(' · '))}</p>
+      <ul class="lista-sueltos">
+        ${S.sueltos.map((r) => `
+          <li class="suelto">
+            <span class="suelto-nombre">${esc(r.exercises?.nombre || 'Ejercicio desconocido')}</span>
+            <span class="suelto-dato">${esc(fmtNum(r.peso))} ${esc(r.unidad || '')}${r.reps ? ` · ${esc(r.series)}×${esc(r.reps)}` : ''}</span>
+            <button type="button" class="enlace enlace--riesgo" data-borrar-suelto="${esc(r.id)}">borrar</button>
+          </li>`).join('')}
+      </ul>
       <p class="explicacion-aviso">
         Quedaron acá porque se registraron cuando esos ejercicios estaban en el plan de
         este día, o porque se anotaron en el día equivocado. Siguen contando en Progreso.
-        Para moverlos al día que les corresponde hace falta una consulta —dímelo y te la paso—;
-        si el ejercicio volviera al plan de este día, aparecería solo en la lista de arriba.
+        Si el ejercicio vuelve al plan de este día, aparece solo en la lista de arriba;
+        para moverlos al día que les corresponde hace falta una consulta.
       </p>
     </div>`;
 }

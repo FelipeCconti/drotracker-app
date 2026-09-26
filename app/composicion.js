@@ -6,9 +6,10 @@
 //
 //   · Lo ESCRIBE siempre su dueño. Ni el coach ni el administrador,
 //     tengan el permiso que tengan sobre el entrenamiento.
-//   · Lo LEE su dueño y quien él haya autorizado, uno por uno, desde
-//     el bloque "Quién puede ver esto" del final de esta pantalla.
-//     El administrador no lo ve por ser administrador.
+//   · Lo LEE su dueño y quien él haya autorizado, uno por uno, desde la
+//     pantalla "Mi coach". El administrador no lo ve por ser
+//     administrador. Al final de esta pantalla se dice quién lo ve hoy,
+//     pero el interruptor está allá, junto a los otros dos permisos.
 //
 // Y una regla de producto que no es negociable: **la app muestra
 // números y tendencia, nunca categorías ni juicios de salud.** El IMC
@@ -22,11 +23,11 @@
 
 import {
   perfilCompleto, guardarAltura, mediciones, crearMedicion, actualizarMedicion,
-  borrarMedicion, misCoachesYAcceso, concederComposicion, revocarComposicion,
+  borrarMedicion,
 } from './db.js';
 
 import { esc, fmtNum, aNumero, mensajeDeError, avisar } from './ui.js';
-import { sesion, esPropio as sujetoEsMio, permiso, sinPermisoHTML, refrescarAtletas } from './sesion.js';
+import { sesion, esPropio as sujetoEsMio, permiso, sinPermisoHTML } from './sesion.js';
 
 const Chart = window.Chart;
 
@@ -63,6 +64,7 @@ const S = {
 };
 
 let raiz = null;
+let irA = null;   // navegador de la app, para el botón a "Mi coach"
 const esPropia = () => sujetoEsMio();
 
 function token(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
@@ -70,8 +72,9 @@ function token(n) { return getComputedStyle(document.documentElement).getPropert
 // ============================================================
 // Entrada
 // ============================================================
-export async function montarComposicion(contenedor) {
+export async function montarComposicion(contenedor, _perfil, ir) {
   raiz = contenedor;
+  irA = ir;
   S.yo = sesion.yo;
   S.viendo = sesion.sujeto;   // quién es se elige en la cabecera
 
@@ -94,7 +97,9 @@ async function cargar() {
   ]);
   if (perfil) S.perfil = perfil;
   S.filas = filas;
-  S.coaches = esPropia() ? await misCoachesYAcceso(S.yo.id).catch(() => []) : [];
+  // Ya vienen cargados al entrar a la app; acá solo se leen para decir
+  // quién ve esta pantalla. Encenderlos y apagarlos es cosa de Mi coach.
+  S.coaches = esPropia() ? sesion.coaches : [];
   pintar();
 }
 
@@ -265,31 +270,34 @@ function historialHTML() {
     </details>`;
 }
 
+/**
+ * Quién ve esta pantalla. Informa, no decide: el interruptor vive en
+ * "Mi coach", junto a los otros dos permisos del coach.
+ *
+ * Antes se encendía acá. Se movió porque tener un permiso del coach en
+ * Composición y los otros dos en ningún lado hacía que nadie encontrara
+ * el que buscaba. Lo que se queda es la respuesta a la pregunta que uno
+ * se hace estando en esta pantalla: "¿quién más ve esto?".
+ */
 function compartirHTML() {
-  if (!S.coaches.length) {
-    return `<div class="explicacion">
-      <h3 class="explicacion-titulo">Quién puede ver esto</h3>
-      <p>Nadie más que tú. Ni tu administrador.</p>
-      <p class="explicacion-aviso">Cuando tengas un coach asignado aparecerá acá,
-        con un interruptor para darle acceso si quieres. Mientras no lo enciendas,
-        no ve nada de esta pantalla.</p>
-    </div>`;
-  }
+  const conAcceso = S.coaches.filter((c) => c.veComposicion);
+
+  const quienes = !S.coaches.length
+    ? '<p>Nadie más que tú. Ni tu administrador.</p>'
+    : conAcceso.length
+      ? `<p>Además de ti: <strong>${conAcceso.map((c) => esc(c.nombre || c.email)).join(', ')}</strong>.</p>`
+      : '<p>Nadie más que tú. Tu coach no ve nada de esta pantalla.</p>';
+
   return `
     <div class="explicacion">
       <h3 class="explicacion-titulo">Quién puede ver esto</h3>
-      <p>Tú decides, coach por coach. Se puede revocar en cualquier momento y el
-         acceso se corta al instante.</p>
-      <ul class="lista-permisos">
-        ${S.coaches.map((c) => `
-          <li class="permiso">
-            <span class="permiso-nombre">${esc(c.nombre || c.email)}</span>
-            <label class="interruptor">
-              <input type="checkbox" data-coach="${esc(c.id)}" ${c.tieneAcceso ? 'checked' : ''}>
-              <span>${c.tieneAcceso ? 'puede verla' : 'no la ve'}</span>
-            </label>
-          </li>`).join('')}
-      </ul>
+      ${quienes}
+      <p class="explicacion-aviso">
+        ${S.coaches.length
+          ? 'El interruptor para dar o quitar ese acceso está en <strong>Mi coach</strong>, junto a los otros permisos. Se puede revocar cuando quieras y el acceso se corta al instante.'
+          : 'Cuando tengas un coach asignado podrás darle acceso desde <strong>Mi coach</strong>, si quieres. Mientras no lo enciendas, no ve nada de esta pantalla.'}
+      </p>
+      ${S.coaches.length ? '<button type="button" class="boton boton--suave" id="ir-mi-coach">Ir a Mi coach</button>' : ''}
     </div>`;
 }
 
@@ -329,20 +337,7 @@ function conectar() {
     } catch (e) { avisar(mensajeDeError(e), 'error'); }
   }));
 
-  raiz.querySelectorAll('[data-coach]').forEach((chk) => chk.addEventListener('change', async () => {
-    const coachId = chk.dataset.coach;
-    try {
-      if (chk.checked) await concederComposicion(S.yo.id, coachId);
-      else await revocarComposicion(S.yo.id, coachId);
-      S.coaches = await misCoachesYAcceso(S.yo.id);
-      await refrescarAtletas();   // el cambio se nota al instante en la cabecera
-      pintar();
-      avisar(chk.checked ? 'Acceso concedido.' : 'Acceso revocado.');
-    } catch (e) {
-      chk.checked = !chk.checked;      // el interruptor no miente sobre el estado real
-      avisar(mensajeDeError(e), 'error');
-    }
-  }));
+  q('#ir-mi-coach')?.addEventListener('click', () => irA?.('mi-coach'));
 }
 
 async function enviarMedicion(ev) {

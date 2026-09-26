@@ -19,23 +19,28 @@
 // interfaz no ofrezca botones que van a fallar.
 // ============================================================
 
-import { misAtletas } from './db.js';
+import { misAtletas, misCoachesYPermisos } from './db.js';
 
 export const sesion = {
   yo: null,
   sujeto: null,     // de quién son los datos en pantalla
-  atletas: [],      // mis atletas, con sus permisos
+  atletas: [],      // mis atletas, con lo que ellos me permitieron
+  coaches: [],      // mis coaches, con lo que yo les permití
 };
 
 /** Se llama una vez al entrar. */
 export async function iniciarSesionApp(perfil) {
   sesion.yo = perfil;
   sesion.sujeto = perfil;
-  try {
-    sesion.atletas = await misAtletas(perfil.id);
-  } catch {
-    sesion.atletas = [];   // no ser coach de nadie no es un error
-  }
+
+  // Las dos listas son independientes y ninguna es un error si viene
+  // vacía: no ser coach de nadie es lo normal, y no tener coach también.
+  const [atletas, coaches] = await Promise.all([
+    misAtletas(perfil.id).catch(() => []),
+    misCoachesYPermisos(perfil.id).catch(() => []),
+  ]);
+  sesion.atletas = atletas;
+  sesion.coaches = coaches;
   return sesion;
 }
 
@@ -65,6 +70,16 @@ export async function refrescarAtletas() {
   try { sesion.atletas = await misAtletas(sesion.yo.id); } catch { /* se queda con lo que había */ }
 }
 
+/** Lo mismo del otro lado: lo que yo le permití a mis coaches. */
+export async function refrescarCoaches() {
+  try { sesion.coaches = await misCoachesYPermisos(sesion.yo.id); } catch { /* idem */ }
+}
+
+/** ¿Tengo a alguien asignado como coach? Decide si el inicio ofrece "Mi coach". */
+export function tengoCoach() {
+  return sesion.coaches.length > 0;
+}
+
 /**
  * Aviso estándar para cuando la pantalla existe pero el permiso no.
  * Decirlo es mejor que esconder la pestaña: esconderla deja al coach
@@ -72,9 +87,9 @@ export async function refrescarAtletas() {
  */
 export function sinPermisoHTML(que) {
   const textos = {
-    registrar: ['registrarle entrenamientos', 'Puede encenderlo desde su propia sesión, en el interruptor de su coach.'],
-    plan: ['editarle la rutina', 'El administrador es quien concede ese permiso al crear el vínculo.'],
-    composicion: ['ver su composición corporal', 'Solo esa persona puede concederlo, desde el final de su pantalla de Composición.'],
+    registrar: ['registrarle entrenamientos', 'Puede encenderlo desde su propia sesión, en la pantalla "Mi coach".'],
+    plan: ['editarle la rutina', 'Puede encenderlo desde su propia sesión, en la pantalla "Mi coach".'],
+    composicion: ['ver su composición corporal', 'Solo esa persona puede concederlo, desde su pantalla "Mi coach".'],
   }[que];
   return `
     <div class="vacio">

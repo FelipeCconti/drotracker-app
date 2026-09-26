@@ -146,6 +146,18 @@ select ws.fecha, e.nombre, sl.peso, sl.series, sl.reps,
 `lo_escribio` en null significa que la fila viene de la migración de la planilla.
 `actualizado_en` en null significa que nunca se editó.
 
+## Borrar un registro suelto
+
+Ya no hace falta SQL: en **Entrenar**, cada ejercicio con dato guardado tiene
+"borrar este registro" en su pie, y los que aparecen en el aviso de "no es de este día"
+tienen su propio "borrar". Si al borrar la sesión queda sin nada, se va con ella.
+
+Lo que sigue necesitando SQL es borrar una sesión entera con todo lo suyo:
+
+```sql
+delete from workout_sessions where id = 'ID-DE-LA-SESION';
+```
+
 ## Registros que quedaron en el día equivocado
 
 Pasa cuando alguien entrena dos paquetes la misma jornada: abre el Día 4, anota todo

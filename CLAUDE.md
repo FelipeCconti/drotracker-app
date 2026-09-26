@@ -115,6 +115,15 @@ Tres líneas que no se cruzan:
    El **admin no escribe datos ajenos** por el hecho de ser admin — para eso tendría
    que asignarse como coach y que el atleta se lo permita.
 
+   Los tres interruptores del atleta —estos dos y el de la composición— viven juntos en
+   **`app/mi-coach.js`**, una pantalla a la que se entra desde el inicio y que solo
+   aparece si hay un coach asignado. Estuvieron repartidos (el de composición al final
+   de Composición, los otros dos en ninguna parte salvo SQL) y el resultado fue que
+   nadie encontraba el que necesitaba. Un permiso que no se encuentra hace creer que la
+   app decide sola quién ve qué. Esa pantalla **ignora a propósito el selector "viendo
+   a" de la cabecera**: es siempre sobre uno mismo, porque nadie enciende permisos en
+   nombre de otro.
+
    Toda fila de `workout_sessions` y `set_logs` queda sellada con `registrado_por`
    (null = migrada de la planilla), así siempre se sabe quién escribió qué.
 2. **La composición corporal no se abre por rol.** El permiso vive en
@@ -137,9 +146,10 @@ trámite incómodo en el SQL Editor. Bloquear cubre el caso real y conserva los 
 ```
 index.html              punto de entrada
 config.js               URL y publishable key de Supabase (públicas)
-app/                    un módulo por pantalla: auth, rutina, entrenar,
-                        progreso, composicion, admin — más db.js (acceso
-                        a datos) y ui.js (helpers compartidos)
+app/                    un módulo por pantalla: auth, inicio, rutina, entrenar,
+                        progreso, composicion, mi-coach, admin, instrucciones
+                        — más db.js (acceso a datos), sesion.js (quién soy y
+                        a quién miro) y ui.js (helpers compartidos)
 css/tokens.css          TODO el color, tipografía y espaciado
 css/app.css             componentes, siempre en términos de los tokens
 vendor/                 librerías vendorizadas (chart.js, supabase-js)
@@ -321,6 +331,14 @@ deshacer sin querer:
 - **Un guardado que falla no borra lo escrito.** La fila queda marcada y se reintenta
   sola cuando vuelve la red (`window.addEventListener('online', …)`). En un subterráneo
   con señal mala, perder lo tecleado es imperdonable.
+- **Borrar un registro es explícito, y es la única confirmación de la pantalla.** Vaciar
+  peso y reps también borra, pero eso solo sirve si se puede escribir en los campos: un
+  registro que entró por un toque accidental necesita una salida propia, o la única
+  forma de sacarlo es una consulta a la base (pasó). El botón está en el pie de la fila
+  y también en cada registro del aviso de "no es de este día", que de otro modo serían
+  inalcanzables. Si al borrar la sesión queda sin registros, se borra con ella: la
+  pantalla no crea sesiones vacías y tampoco debe dejarlas, porque una sesión vacía
+  enciende el punto verde de un día donde no hay nada.
 
 ## Progreso y composición: decisiones de gráfico
 
@@ -352,8 +370,9 @@ subir de peso no es "malo" ni bajar "bueno" — depende de qué busque la person
 no lo sabe. El IMC se muestra como cifra y **nunca se traduce a una categoría**; lleva al
 lado la advertencia de que no distingue músculo de grasa.
 
-El interruptor con el que el atleta concede y revoca el acceso de cada coach a su
-composición vive **al final de la pantalla de Composición**, y solo lo ve el dueño.
+Al final de la pantalla de Composición se dice **quién la ve hoy**, pero el interruptor
+para conceder y revocar ese acceso está en **Mi coach**, junto a los otros dos. Ese
+bloque es informativo y solo lo ve el dueño.
 
 ## Las pruebas de RLS no cuentan filas de toda la base
 

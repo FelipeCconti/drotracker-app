@@ -38,7 +38,7 @@ import {
 } from './db.js';
 
 import { esc, avisar, mensajeDeError, fmtFechaLarga, retrasar } from './ui.js';
-import { sesion, refrescarAtletas } from './sesion.js';
+import { sesion, refrescarAtletas, refrescarCoaches } from './sesion.js';
 
 const ROLES = [
   { valor: 'atleta', texto: 'Atleta' },
@@ -263,7 +263,7 @@ function bloqueCoachesHTML() {
       <p class="nota-vista">
         Asignar a alguien deja que su coach <strong>vea</strong> su entrenamiento y le
         arme la rutina. Escribirle los entrenamientos es otro permiso, y lo enciende el
-        atleta desde su propia sesión.
+        atleta desde su propia sesión, en la pantalla <strong>Mi coach</strong>.
       </p>
 
       <label class="campo-chico campo-chico--ancho">
@@ -394,7 +394,11 @@ function conectar() {
       if (chk.checked) await asignarAtleta(S.coachId, atletaId, S.yo.id);
       else await desasignarAtleta(S.coachId, atletaId);
       S.vinculos = await todosLosVinculos();
-      await refrescarAtletas();
+      // Las dos listas: a quién entreno yo y quién me entrena a mí. La
+      // segunda importa porque el admin también es atleta y puede
+      // asignarse un coach: sin esto, "Mi coach" no aparecería en su
+      // inicio hasta recargar la página.
+      await Promise.all([refrescarAtletas(), refrescarCoaches()]);
       pintar();
       avisar(chk.checked ? 'Atleta asignado.' : 'Asignación retirada.');
     } catch (e) {

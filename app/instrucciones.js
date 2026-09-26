@@ -155,11 +155,14 @@ export function montarInstrucciones(contenedor, perfil, ir) {
           <li><strong>Tu entrenamiento</strong> lo ves tú, tu coach asignado y el
               administrador.</li>
           <li><strong>Tu composición corporal</strong> no la ve nadie más que tú, ni
-              siquiera el administrador, hasta que tú enciendas el interruptor de un coach
-              al final de esa pantalla. Se revoca cuando quieras y el acceso se corta al
-              instante.</li>
+              siquiera el administrador, hasta que tú se la abras a un coach. Se revoca
+              cuando quieras y el acceso se corta al instante.</li>
           <li><strong>Escribir es otra cosa que leer.</strong> Que tu coach vea tu
               entrenamiento no significa que pueda cambiarlo: eso lo enciendes tú, aparte.</li>
+          <li><strong>Los tres interruptores están en <em>Mi coach</em></strong>, en el
+              inicio: registrar tus entrenamientos, armar tu rutina y ver tu composición.
+              Nacen apagados y solo los mueves tú. Ese botón aparece cuando tienes un
+              coach asignado.</li>
           <li><strong>El administrador no escribe datos ajenos.</strong> Asigna coaches y
               aprueba cuentas; no toca el historial de nadie.</li>
           <li>Cada dato guarda <strong>quién lo escribió</strong> y si fue editado después.</li>
